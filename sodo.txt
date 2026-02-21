@@ -1,0 +1,45 @@
+RESTAURANT-BOOKING/
+│
+├── backend/
+│   ├── alembic/
+│   │   ├── versions/
+│   │   ├── env.py
+│   │   ├── README
+│   │   └── script.py.mako
+│   ├── app/
+│   │   ├── __pycache__/
+│   │   ├── api/
+│   │   ├── core/
+│   │   ├── models/
+│   │   ├── schemas/
+│   │   ├── __init__.py
+│   │   └── main.py
+│   ├── venv/
+│   │   ├── Include/
+│   │   ├── Lib/
+│   │   ├── Scripts/
+│   │   └── pyvenv.cfg
+│   ├── .env
+│   ├── alembic.ini
+│   └── requirements.txt
+│
+├── files/
+│   ├── PROJECT_CHECKLIST.md
+│   ├── QUICK_START.md
+│   ├── README.md
+│   └── SETUP_GUIDE.md
+│
+├── frontend/
+│   ├── .vscode/
+│   ├── node_modules/
+│   ├── public/
+│   ├── src/
+│   ├── .env
+│   ├── .gitignore
+│   ├── index.html
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── README.md
+│   └── vite.config.js
+│
+└── README.md (ở root)

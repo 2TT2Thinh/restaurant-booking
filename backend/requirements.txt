@@ -1,0 +1,25 @@
+fastapi==0.110.0
+uvicorn[standard]==0.27.1
+
+# Database
+sqlalchemy==2.0.27
+psycopg2-binary==2.9.9
+alembic==1.13.1
+
+# Validation / Schema
+pydantic==2.6.1
+pydantic-settings==2.1.0
+
+# Auth / Security
+passlib[bcrypt]==1.7.4
+python-jose==3.3.0
+
+# Form & Upload
+python-multipart==0.0.9
+
+# Environment variables
+python-dotenv==1.0.1
+
+# Optional nhưng rất nên có
+httpx==0.26.0
+pytest==8.0.0

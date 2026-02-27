@@ -123,13 +123,23 @@
 
 <script setup>
 import { ref } from 'vue';
-
+import { authService } from '@/services/auth.service';
+import { useRouter } from 'vue-router';
 const email = ref('');
 const password = ref('');
 const rememberMe = ref(false);
+const router = useRouter();
+const errorMessage = ref('');
 
-const handleLogin = () => {
-  console.log('Logging in with:', { email: email.value, password: password.value });
+const handleLogin = async () => {
+  try {
+    await authService.login(email.value, password.value);
+    // Đăng nhập xong thì chuyển hướng về trang chủ
+    router.push('/'); 
+  } catch (error) {
+    errorMessage.value = "Sai email hoặc mật khẩu rồi bạn ơi!";
+    console.error(error);
+  }
 };
 </script>
 

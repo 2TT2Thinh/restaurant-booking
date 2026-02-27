@@ -41,6 +41,17 @@
                 </p>
               </div>
 
+              <v-alert
+                v-if="errorMessage"
+                type="error"
+                variant="tonal"
+                density="compact"
+                class="mb-4 rounded-lg text-caption"
+                closable
+              >
+                {{ errorMessage }}
+              </v-alert>
+
               <v-form @submit.prevent="handleLogin">
                 <label class="text-subtitle-2 font-weight-bold d-block mb-2">Email</label>
                 <v-text-field
@@ -52,6 +63,7 @@
                   rounded="lg"
                   color="primary"
                   class="mb-2"
+                  :disabled="loading"
                 ></v-text-field>
 
                 <div class="d-flex justify-space-between align-center mb-2">
@@ -69,6 +81,7 @@
                   type="password"
                   rounded="lg"
                   color="primary"
+                  :disabled="loading"
                 ></v-text-field>
 
                 <v-checkbox
@@ -88,6 +101,8 @@
                   elevation="2"
                   class="mt-6 text-none font-weight-bold shadow-primary"
                   type="submit"
+                  :loading="loading"
+                  :disabled="loading"
                 >
                   Login
                 </v-btn>
@@ -116,25 +131,68 @@
     </v-main>
 
     <v-footer app color="transparent" class="justify-center text-caption text-grey-darken-1 py-6">
-      © 2024 Booking Tracker. All rights reserved. Secure encrypted connection.
+      © 2026 Booking Tracker. All rights reserved. Secure encrypted connection.
     </v-footer>
   </v-app>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { authService } from '@/services/auth.service';
+import { useRouter } from 'vue-router';
 
+// Các biến lưu trạng thái
 const email = ref('');
 const password = ref('');
 const rememberMe = ref(false);
+const loading = ref(false);
+const errorMessage = ref('');
+const router = useRouter();
 
-const handleLogin = () => {
-  console.log('Logging in with:', { email: email.value, password: password.value });
+// Tự động điền email nếu trước đó có chọn "Keep me logged in"
+onMounted(() => {
+  const savedEmail = localStorage.getItem('remembered_email');
+  if (savedEmail) {
+    email.value = savedEmail;
+    rememberMe.value = true;
+  }
+});
+
+// Hàm xử lý đăng nhập
+const handleLogin = async () => {
+  if (!email.value || !password.value) {
+    errorMessage.value = "Vui lòng nhập đầy đủ email và mật khẩu!";
+    return;
+  }
+
+  loading.value = true;
+  errorMessage.value = '';
+
+  try {
+    const response = await authService.login(email.value, password.value);
+    
+    // Ghi nhớ email nếu cần
+    if (rememberMe.value) {
+      localStorage.setItem('remembered_email', email.value);
+    } else {
+      localStorage.removeItem('remembered_email');
+    }
+
+    console.log('Đăng nhập thành công:', response);
+    // Chuyển hướng người dùng vào trang Dashboard/Home
+    router.push('/'); 
+    
+  } catch (error) {
+    // Lấy thông báo lỗi từ Backend gửi về
+    errorMessage.value = error.response?.data?.detail || "Email hoặc mật khẩu không chính xác!";
+    console.error("Lỗi:", error);
+  } finally {
+    loading.value = false;
+  }
 };
 </script>
 
 <style scoped>
-/* Custom spacing and typography to match the exact StichAI spec */
 .bg-background-light {
   background-color: #f8f7f6 !important;
 }
@@ -155,7 +213,6 @@ const handleLogin = () => {
   box-shadow: 0 4px 14px 0 rgba(238, 124, 43, 0.3) !important;
 }
 
-/* Tracking adjustment to match 'Work Sans' feel */
 .tracking-tight {
   letter-spacing: -0.015em !important;
 }

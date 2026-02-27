@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.sql import func
 from app.models.base import Base
-
+from sqlalchemy import Boolean
 class User(Base):
     __tablename__ = "users"
 
@@ -11,3 +11,4 @@ class User(Base):
     full_name = Column(String(255), nullable=False)
     phone = Column(String(20))
     created_at = Column(DateTime, server_default=func.now())
+    is_active = Column(Boolean, default=True)

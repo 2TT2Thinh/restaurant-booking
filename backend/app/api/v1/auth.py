@@ -35,6 +35,6 @@ async def register(
      raise HTTPException(    
         status_code= 400,
         detail="Email đã tồn tại"
-)
-     return  user
+        )
+    return  user
     

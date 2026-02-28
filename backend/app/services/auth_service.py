@@ -41,4 +41,5 @@ async def create_user(db: AsyncSession, user_data: UserCreate):
         return new_user
     except Exception as e:
         await db.rollback() # Nếu có lỗi, rollback lại
+        print(f"Database Error: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error")

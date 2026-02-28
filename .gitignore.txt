@@ -1,0 +1,13 @@
+# Python cache
+**/__pycache__/
+*.py[cod]
+
+# Environments
+.venv/
+venv/
+env/
+
+# Frontend
+node_modules/
+dist/
+.env

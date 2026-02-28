@@ -1,6 +1,7 @@
 import apiClient from '../api/axios';
 
 export const authService = {
+  // HÀM ĐĂNG NHẬP
   async login(email, password) {
     // Gọi đến endpoint /auth/login mà bạn đã sửa lỗi ở Backend
     const response = await apiClient.post('/auth/login', {
@@ -13,5 +14,17 @@ export const authService = {
       localStorage.setItem('user_token', response.data.access_token);
     }
     return response.data;
+  },
+
+
+    // HÀM ĐĂNG KÝ
+  async register(userData) {
+    const response = await apiClient.post('/auth/register', userData);
+    return response.data;
   }
+  
 };
+
+
+
+

@@ -96,9 +96,9 @@
               <div class="mt-8 pt-6 border-t text-center">
                 <p class="text-body-2 text-medium-emphasis">
                   Don't have an account?
-                  <a href="#" class="text-primary font-weight-bold text-decoration-none ml-1">
+                  <router-link to="/register" class="text-primary font-weight-bold text-decoration-none ml-1">
                     Register Now
-                  </a>
+                  </router-link>g
                 </p>
               </div>
 

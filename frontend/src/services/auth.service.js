@@ -12,6 +12,8 @@ export const authService = {
     // Nếu đăng nhập thành công, lưu Token vào LocalStorage
     if (response.data.access_token) {
       localStorage.setItem('user_token', response.data.access_token);
+      // LƯU THÊM DÒNG NÀY ĐỂ TRANG DASHBOARD LẤY ĐƯỢC
+      localStorage.setItem('user_email', email);
     }
     return response.data;
   },

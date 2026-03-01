@@ -13,7 +13,7 @@ router = APIRouter()
 @router.post("/login", response_model=TokenSchema)
 async def login(
     data: LoginSchema,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     user = await authenticate_user(db, data.email, data.password)
 

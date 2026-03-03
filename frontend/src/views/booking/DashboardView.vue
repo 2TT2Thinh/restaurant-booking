@@ -16,7 +16,14 @@
           </div>
 
           <div class="d-flex align-center gap-3">
-            <v-btn color="primary" prepend-icon="mdi-plus" size="large" rounded="lg" class="text-none font-weight-bold d-none d-sm-flex" style="margin-right: 45px;">
+            <v-btn 
+            color="primary" 
+            prepend-icon="mdi-plus" 
+            size="large" rounded="lg" 
+            class="text-none font-weight-bold d-none d-sm-flex" 
+            style="margin-right: 45px;"
+            @click="router.push('/bookings/new')"
+            >
               Create New
             </v-btn>
             <v-btn color="primary" icon="mdi-plus" size="small" class="d-flex d-sm-none" rounded="lg"></v-btn>
@@ -46,11 +53,34 @@
         <v-row class="mb-4 align-center">
           <v-col cols="12" md="6">
             <v-tabs v-model="activeTab" color="primary" align-tabs="start">
-              <v-tab value="all" class="text-none font-weight-bold">All</v-tab>
-              <v-tab value="pending" class="text-none font-weight-bold">Pending</v-tab>
-              <v-tab value="confirmed" class="text-none font-weight-bold">Confirmed</v-tab>
-              <v-tab value="cancelled" class="text-none font-weight-bold">Cancelled</v-tab>
-            </v-tabs>
+            <v-tab value="all" class="text-none font-weight-bold">
+              All 
+              <v-chip size="x-small" variant="tonal" class="ml-2">
+                {{ bookings.length }}
+              </v-chip>
+            </v-tab>
+
+            <v-tab value="pending" class="text-none font-weight-bold">
+              Pending
+              <v-chip size="x-small" color="warning" variant="flat" class="ml-2">
+                {{ bookings.filter(b => b.status === 'pending').length }}
+              </v-chip>
+            </v-tab>
+
+            <v-tab value="confirmed" class="text-none font-weight-bold">
+              Confirmed
+              <v-chip size="x-small" color="success" variant="flat" class="ml-2">
+                {{ bookings.filter(b => b.status === 'confirmed').length }}
+              </v-chip>
+            </v-tab>
+
+            <v-tab value="cancelled" class="text-none font-weight-bold">
+              Cancelled
+              <v-chip size="x-small" color="error" variant="flat" class="ml-2">
+                {{ bookings.filter(b => b.status === 'cancelled').length }}
+              </v-chip>
+            </v-tab>
+          </v-tabs>
           </v-col>
           <v-col cols="12" md="6">
             <v-text-field v-model="search" prepend-inner-icon="mdi-magnify" label="Search restaurant name..." variant="outlined" density="comfortable" rounded="lg" hide-details bg-color="white"></v-text-field>

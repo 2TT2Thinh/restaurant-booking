@@ -28,6 +28,11 @@ const router = createRouter({
       path: '/bookings/edit/:id', // Dấu :id là bắt buộc để nhận id từ Dashboard
       name: 'BookingEdit',
       component: () => import('../views/booking/BookingEditView.vue')
+    },
+    {
+      path: '/bookings/new',
+      name: 'BookingCreate',
+      component: () => import('../views/booking/BookingCreateView.vue')
     }
   ]
 })

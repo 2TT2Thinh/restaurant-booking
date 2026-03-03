@@ -1,10 +1,11 @@
 from typing import List, Optional
-
+from datetime import datetime,timezone, timedelta
+from sqlalchemy import func, select, and_, case
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.models.booking import Booking
 from app.schemas.booking import BookingCreate, BookingUpdate
-
+from app.core.config import settings
 
 async def get_user_bookings(db: AsyncSession, user_id: int):
     # 1. Tạo câu lệnh select (SQLAlchemy 2.0 style)
@@ -99,3 +100,40 @@ async def get_multi_bookings(
     # 5. Thực thi
     result = await db.execute(query)
     return result.scalars().all()
+
+#  ========================================== profile user
+async def get_booking_stats(db: AsyncSession, user_id: int):
+    # 1. Chuẩn bị thời gian theo chuẩn UTC Naive
+    # Vì Frontend gửi 'Z', DB sẽ lưu giờ gốc London. 
+    # Ta lấy giờ hiện tại của London (UTC) để so sánh cho công bằng.
+    now = datetime.now(timezone.utc).replace(tzinfo=None) 
+
+    # 2. Query: Database tự xử lý
+    query = (
+        select(
+            func.count(Booking.id).label("total"),
+            func.count(case((Booking.status == "confirmed", 1))).label("confirmed"),
+            func.count(case((Booking.status == "cancelled", 1))).label("cancelled"),
+            # Pending: Trạng thái pending VÀ thời gian đặt >= bây giờ (UTC)
+            func.count(case((
+                and_(Booking.status == "pending", Booking.booking_time >= now), 1
+            ))).label("pending"),
+            # Expired: Trạng thái pending VÀ thời gian đặt < bây giờ (UTC)
+            func.count(case((
+                and_(Booking.status == "pending", Booking.booking_time < now), 1
+            ))).label("expired")
+        )
+        .where(Booking.user_id == user_id)
+    )
+
+    result = await db.execute(query)
+    row = result.one()
+
+    # 3. Trả về kết quả
+    return {
+        "total": row.total or 0,
+        "confirmed": row.confirmed or 0,
+        "cancelled": row.cancelled or 0,
+        "pending": row.pending or 0,
+        "expired": row.expired or 0
+    }

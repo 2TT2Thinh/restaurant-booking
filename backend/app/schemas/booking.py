@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 from datetime import date, time, datetime
 from typing import Optional
 
@@ -13,7 +13,11 @@ class BookingBase(BaseModel):
 class BookingRead(BookingBase):
     id: int
     created_at: datetime
-
+    @computed_field
+    @property
+    def full_datetime(self) -> datetime:
+        # Tự động gộp ngày và giờ từ chính object này
+        return datetime.combine(self.booking_date, self.booking_time)
     class Config:
         from_attributes = True # Cho phép chuyển từ SQLAlchemy model sang Pydantic
 

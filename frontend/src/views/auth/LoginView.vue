@@ -137,8 +137,8 @@ const errorMessage = ref('');
 const handleLogin = async () => {
   try {
     await authService.login(email.value, password.value);
-    // Đăng nhập xong thì chuyển hướng về trang chủ
-    router.push('/'); 
+    // Đăng nhập xong thì chuyển hướng về trang dashboard
+    router.push('/dashboard'); 
   } catch (error) {
     errorMessage.value = "Sai email hoặc mật khẩu rồi bạn ơi!";
     console.error(error);

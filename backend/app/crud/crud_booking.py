@@ -1,6 +1,6 @@
 from typing import List, Optional
 from datetime import datetime,timezone, timedelta
-from sqlalchemy import func, select, and_, case
+from sqlalchemy import func, or_, select, and_, case
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.models.booking import Booking
@@ -103,24 +103,36 @@ async def get_multi_bookings(
 
 #  ========================================== profile user
 async def get_booking_stats(db: AsyncSession, user_id: int):
-    # 1. Chuẩn bị thời gian theo chuẩn UTC Naive
-    # Vì Frontend gửi 'Z', DB sẽ lưu giờ gốc London. 
-    # Ta lấy giờ hiện tại của London (UTC) để so sánh cho công bằng.
-    now = datetime.now(timezone.utc).replace(tzinfo=None) 
+    # 1. Lấy thời gian hiện tại
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    current_date = now_utc.date()
+    current_time = now_utc.time() # Lấy riêng phần Giờ:Phút:Giây
 
-    # 2. Query: Database tự xử lý
+    # 2. Query
     query = (
         select(
             func.count(Booking.id).label("total"),
             func.count(case((Booking.status == "confirmed", 1))).label("confirmed"),
             func.count(case((Booking.status == "cancelled", 1))).label("cancelled"),
-            # Pending: Trạng thái pending VÀ thời gian đặt >= bây giờ (UTC)
+            # Pending: status='pending' VÀ (Ngày > hôm nay HOẶC (Ngày == hôm nay VÀ Giờ >= bây giờ))
             func.count(case((
-                and_(Booking.status == "pending", Booking.booking_time >= now), 1
+                and_(
+                    Booking.status == "pending",
+                    or_(
+                        Booking.booking_date > current_date,
+                        and_(Booking.booking_date == current_date, Booking.booking_time >= current_time)
+                    )
+                ), 1
             ))).label("pending"),
-            # Expired: Trạng thái pending VÀ thời gian đặt < bây giờ (UTC)
+            # Expired: status='pending' VÀ (Ngày < hôm nay HOẶC (Ngày == hôm nay VÀ Giờ < bây giờ))
             func.count(case((
-                and_(Booking.status == "pending", Booking.booking_time < now), 1
+                and_(
+                    Booking.status == "pending",
+                    or_(
+                        Booking.booking_date < current_date,
+                        and_(Booking.booking_date == current_date, Booking.booking_time < current_time)
+                    )
+                ), 1
             ))).label("expired")
         )
         .where(Booking.user_id == user_id)
@@ -129,7 +141,6 @@ async def get_booking_stats(db: AsyncSession, user_id: int):
     result = await db.execute(query)
     row = result.one()
 
-    # 3. Trả về kết quả
     return {
         "total": row.total or 0,
         "confirmed": row.confirmed or 0,

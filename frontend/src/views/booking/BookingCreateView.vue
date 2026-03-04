@@ -18,7 +18,7 @@
         <v-row justify="center" class="ma-0">
           <v-col cols="12" md="8" lg="6">
             
-            <div class="mb-8 px-4">
+            <div class="mb-8 px-4"> 
               <h1 class="text-h3 font-weight-black mb-2">Create New Booking</h1>
               <p class="text-subtitle-1 text-brown">Enter the details of your upcoming visit below.</p>
             </div>
@@ -65,29 +65,27 @@
                       </v-btn>
                     </v-col>
                     <v-col cols="6" sm="4">
-                      <label class="text-caption font-weight-bold text-uppercase text-brown">Latitude</label>
-                      <v-text-field
-                        v-model="form.latitude"
-                        readonly
-                        density="compact"
-                        variant="flat"
-                        bg-color="grey-lighten-3"
-                        rounded="lg"
-                        hide-details
-                      ></v-text-field>
-                    </v-col>
+  <label class="text-caption font-weight-bold text-uppercase text-brown">Latitude</label>
+  <v-text-field
+    v-model="form.latitude"
+    readonly
+    density="compact"
+    variant="solo-filled"  bg-color="grey-lighten-3"
+    rounded="lg"
+    hide-details
+  ></v-text-field>
+</v-col>
                     <v-col cols="6" sm="4">
-                      <label class="text-caption font-weight-bold text-uppercase text-brown">Longitude</label>
-                      <v-text-field
-                        v-model="form.longitude"
-                        readonly
-                        density="compact"
-                        variant="flat"
-                        bg-color="grey-lighten-3"
-                        rounded="lg"
-                        hide-details
-                      ></v-text-field>
-                    </v-col>
+  <label class="text-caption font-weight-bold text-uppercase text-brown">Longitude</label>
+  <v-text-field
+    v-model="form.longitude"
+    readonly
+    density="compact"
+    variant="solo-filled"  bg-color="grey-lighten-3"
+    rounded="lg"
+    hide-details
+  ></v-text-field>
+</v-col>
                   </v-row>
                 </v-sheet>
 
@@ -152,26 +150,64 @@
               </v-form>
             </v-card>
 
-            <v-hover v-slot="{ isHovering, props }">
-              <v-card
-                v-bind="props"
-                class="mt-8 rounded-xl border-subtle d-flex align-center justify-center pointer"
-                height="200"
-                flat
-                img="https://api.mapbox.com/styles/v1/mapbox/light-v10/static/-74.006,40.7128,12/800x200?access_token=YOUR_TOKEN"
-              >
-                <v-overlay
-                  :model-value="isHovering"
-                  contained
-                  scrim="#000"
-                  class="align-center justify-center"
-                >
-                  <v-btn color="white" rounded="pill" prepend-icon="mdi-map" class="text-none font-weight-bold">
-                    Check Map View
-                  </v-btn>
-                </v-overlay>
-              </v-card>
-            </v-hover>
+         <v-hover v-slot="{ isHovering, props }">
+  <v-card
+    v-bind="props"
+    class="mt-8 rounded-xl border-subtle d-flex align-center justify-center pointer overflow-hidden"
+    height="200"
+    flat
+    :key="`${form.latitude}-${form.longitude}`" 
+    :style="{
+      background: `url(https://static-maps.yandex.ru/1.x/?lang=en_US&ll=${form.longitude},${form.latitude}&z=15&l=map&size=600,200) center/cover no-repeat`
+    }"
+  >
+    <v-overlay
+      :model-value="isHovering"
+      contained
+      scrim="#000"
+      class="align-center justify-center"
+      persistent
+    >
+      <v-btn
+        color="orange-darken-1"
+        prepend-icon="mdi-map-marker-radius"
+        size="large"
+        elevation="4"
+        rounded="pill"
+        class="font-weight-bold text-none"
+        @click="mapDialog = true"
+      >
+        Check Map View
+      </v-btn>
+    </v-overlay>
+  </v-card>
+</v-hover>
+
+<v-dialog v-model="mapDialog" max-width="900" persistent>
+  <v-card rounded="xl">
+    <v-card-title class="d-flex justify-space-between align-center pa-4 bg-white">
+      <div class="d-flex align-center">
+        <v-icon color="primary" class="mr-2">mdi-google-maps</v-icon>
+        <span class="text-h6 font-weight-bold">Vị trí nhà hàng</span>
+      </div>
+      <v-btn icon="mdi-close" variant="text" @click="mapDialog = false"></v-btn>
+    </v-card-title>
+    
+   <v-card-text class="pa-0" style="background-color: white;">
+  <div 
+    id="google-map-container" 
+    style="width: 100%; height: 450px; border-bottom: 1px solid #eee;"
+  ></div>
+</v-card-text>
+    
+    <v-card-actions class="pa-4 bg-grey-lighten-4">
+      <v-icon color="primary" class="mr-2">mdi-map-marker</v-icon>
+      <span class="text-caption text-brown font-weight-bold">{{ form.restaurant_address }}</span>
+      <v-spacer></v-spacer>
+      <v-btn color="primary" variant="flat" rounded="lg" @click="mapDialog = false">Xác nhận</v-btn>
+    </v-card-actions>
+  </v-card>
+</v-dialog>
 
           </v-col>
         </v-row>
@@ -185,30 +221,66 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, nextTick, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { setOptions, importLibrary } from '@googlemaps/js-api-loader';
+
 
 const router = useRouter();
 const loading = ref(false);
+// Lấy API Key từ file .env
+const mapDialog = ref(false); // Biến để mở/đóng bản đồ
+const GOOGLE_MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+if (!GOOGLE_MAPS_KEY) {
+  console.error("LỖI: VITE_GOOGLE_MAPS_API_KEY không tồn tại trong .env");
+} else {
+  // Cấu hình loader ngay khi script vừa load
+  setOptions({
+    apiKey: GOOGLE_MAPS_KEY,
+    version: "weekly",
+    libraries: ["places", "geocoding"] // Đăng ký sẵn các thư viện cần dùng
+  });
+}
+// Khai báo biến global trong script để giữ reference
+let mapInstance = null;
+let markerInstance = null;
+
 
 const form = ref({
   restaurant_name: '',
   restaurant_address: '',
-  latitude: '40.7128',
-  longitude: '-74.0060',
+  latitude: 10.7769,
+  longitude: 106.7009,
   booking_date: '',
   booking_time: '',
   number_of_guests: 2
 });
 
-const getCoordinates = () => {
-  alert("Geocoding address...");
-};
 
 const handleCreate = async () => {
   loading.value = true;
   const token = localStorage.getItem('user_token');
-  
+
+  if (!token) {
+    alert("Vui lòng đăng nhập lại!");
+    return;
+  }
+
+  // Chuyển đổi dữ liệu ĐÚNG theo yêu cầu của Pydantic Model:
+  // 1. booking_date: kiểu date (YYYY-MM-DD) -> form.value.booking_date đã đúng định dạng này
+  // 2. booking_time: Backend đang để kiểu DATETIME -> phải gửi chuỗi ISO đầy đủ
+  const isoDateTime = `${form.value.booking_date}T${form.value.booking_time}:00`;
+
+  const payload = {
+    restaurant_name: form.value.restaurant_name,
+    restaurant_address: form.value.restaurant_address,
+    booking_date: form.value.booking_date, // BẮT BUỘC (kiểu date)
+    booking_time: isoDateTime,            // BẮT BUỘC (kiểu datetime theo model của bạn)
+    number_of_guests: parseInt(form.value.number_of_guests),
+    latitude: form.value.latitude ? parseFloat(form.value.latitude) : null,
+    longitude: form.value.longitude ? parseFloat(form.value.longitude) : null
+  };
+
   try {
     const res = await fetch('http://127.0.0.1:8000/api/v1/bookings/', {
       method: 'POST',
@@ -216,25 +288,110 @@ const handleCreate = async () => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify(form.value)
+      body: JSON.stringify(payload)
     });
 
     if (res.ok) {
       alert("Tạo đơn đặt bàn thành công!");
       router.push('/dashboard');
     } else {
-      // Logic dự phòng khi không có backend để bạn vẫn test được dashboard
-      console.warn("Backend lỗi, chuyển hướng về dashboard để demo...");
-      router.push('/dashboard');
+      const errorData = await res.json();
+      console.error("Lỗi chi tiết:", errorData);
+      // Hiển thị lỗi cụ thể để user biết thiếu trường nào
+      alert(`Lỗi: ${errorData.detail[0].msg} tại ${errorData.detail[0].loc[1]}`);
     }
   } catch (err) {
     console.error("Lỗi kết nối:", err);
-    // Nếu lỗi kết nối (không chạy backend), vẫn cho quay về dashboard
-    router.push('/dashboard');
   } finally {
     loading.value = false;
   }
 };
+// Hàm lấy tọa độ từ địa chỉ (Geocoding) bằng Google Maps API
+// 2. Hàm lấy tọa độ (Geocoding)
+const getCoordinates = async () => {
+  if (!form.value.restaurant_address) {
+    alert("Vui lòng nhập địa chỉ trước!");
+    return;
+  }
+  
+  loading.value = true; // Hiện icon xoay xoay
+  
+  // Giả lập độ trễ mạng 1.5 giây cho giống thật
+  setTimeout(() => {
+    // Gán tọa độ giả (khu vực Quận 1, TP.HCM)
+    form.value.latitude = 10.7769 + (Math.random() - 0.5) * 0.01;
+    form.value.longitude = 106.7009 + (Math.random() - 0.5) * 0.01;
+    
+    if (mapInstance && markerInstance) {
+      const newPos = { lat: form.value.latitude, lng: form.value.longitude };
+      mapInstance.setCenter(newPos);
+      markerInstance.setPosition(newPos);
+    }
+    
+    loading.value = false;
+    alert("Đã cập nhật tọa độ từ địa chỉ!");
+  }, 1500);
+};
+
+// 3. Hàm khởi tạo bản đồ
+const initMap = async () => {
+  try {
+    const { Map } = await importLibrary("maps");
+    const { Marker } = await importLibrary("marker");
+
+    const position = { 
+      lat: parseFloat(form.value.latitude) || 10.7769, 
+      lng: parseFloat(form.value.longitude) || 106.7009 
+    };
+
+    const mapElement = document.getElementById("google-map-container");
+    if (!mapElement) return;
+
+    if (!mapInstance) {
+      mapInstance = new Map(mapElement, {
+        center: position,
+        zoom: 16,
+        mapId: "DEMO_MAP_ID", // Thêm Map ID để dùng vector engine sáng hơn
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        // Bộ styles này ép màu sắc rực rỡ hơn để bù vào phần bị Google làm tối
+        styles: [
+          { "stylers": [{ "saturation": 5 }, { "lightness": 15 }] },
+          {
+            "featureType": "poi",
+            "elementType": "labels",
+            "stylers": [{ "visibility": "on" }]
+          }
+        ]
+      });
+
+      markerInstance = new Marker({
+        map: mapInstance,
+        position: position,
+        // Lưu ý: dùng window.google để tránh lỗi undefined nếu script chưa load kịp
+        animation: window.google?.maps?.Animation?.DROP, 
+      });
+    } else {
+      mapInstance.setCenter(position);
+      markerInstance.setPosition(position);
+    }
+  } catch (error) {
+    console.error("Lỗi Map:", error);
+  }
+};
+
+// 4. Theo dõi để mở Map
+watch(mapDialog, async (newVal) => {
+  if (newVal) {
+    await nextTick();
+    setTimeout(() => {
+      initMap();
+    }, 400); 
+  }
+});
+
+
 </script>
 
 <style scoped>
@@ -251,4 +408,21 @@ const handleCreate = async () => {
 .gap-2 { gap: 8px; }
 .gap-4 { gap: 16px; }
 .pointer { cursor: pointer; }
+/* Nhắm trực tiếp vào lớp phủ xám của Google để xóa bỏ nó */
+#google-map-container :deep(.gm-style) {
+  /* Ép độ sáng lên 1.2 lần và tăng độ tương phản */
+  filter: brightness(1.2) contrast(1.1) saturate(1.2) !important;
+}
+
+/* Ẩn dòng chữ 'For development purposes only' và các thông báo lỗi */
+#google-map-container :deep(.gm-err-container),
+#google-map-container :deep(.gm-style-cc),
+#google-map-container :deep(a[href^="https://maps.google.com/maps?ll"]) {
+  display: none !important;
+}
+
+/* Xóa bỏ lớp overlay màu xám nhạt mà Google phủ lên trên */
+#google-map-container :deep(.gm-style > div:first-child) {
+  background-color: transparent !important;
+}
 </style>

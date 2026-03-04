@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@googlemaps/js-api-loader": "^2.0.2",
     "@mdi/font": "^7.4.47",
     "axios": "^1.13.5",
     "pinia": "^3.0.4",

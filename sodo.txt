@@ -1,45 +1,69 @@
-RESTAURANT-BOOKING/
-│
-├── backend/
-│   ├── alembic/
-│   │   ├── versions/
-│   │   ├── env.py
-│   │   ├── README
-│   │   └── script.py.mako
+restaurant-booking/
+├── backend/                 # FastAPI Backend
 │   ├── app/
-│   │   ├── __pycache__/
 │   │   ├── api/
+│   │   │   └── v1/
+│   │   │       └── endpoints/
+│   │   │           ├── auth.py
+│   │   │           ├── users.py
+│   │   │           ├── restaurants.py
+│   │   │           └── bookings.py
 │   │   ├── core/
+│   │   │   ├── config.py
+│   │   │   ├── security.py
+│   │   │   └── database.py
 │   │   ├── models/
+│   │   │   ├── user.py
+│   │   │   ├── restaurant.py
+│   │   │   └── booking.py
 │   │   ├── schemas/
-│   │   ├── __init__.py
+│   │   │   ├── user.py
+│   │   │   ├── restaurant.py
+│   │   │   └── booking.py
+│   │   ├── services/
+│   │   │   ├── auth_service.py
+│   │   │   └── booking_service.py
+│   │   ├── utils/
+│   │   │   └── helpers.py
 │   │   └── main.py
-│   ├── venv/
-│   │   ├── Include/
-│   │   ├── Lib/
-│   │   ├── Scripts/
-│   │   └── pyvenv.cfg
+│   ├── migrations/
+│   ├── tests/
 │   ├── .env
 │   ├── alembic.ini
 │   └── requirements.txt
 │
-├── files/
-│   ├── PROJECT_CHECKLIST.md
-│   ├── QUICK_START.md
-│   ├── README.md
-│   └── SETUP_GUIDE.md
-│
-├── frontend/
-│   ├── .vscode/
-│   ├── node_modules/
-│   ├── public/
-│   ├── src/
-│   ├── .env
-│   ├── .gitignore
-│   ├── index.html
-│   ├── package-lock.json
-│   ├── package.json
-│   ├── README.md
-│   └── vite.config.js
-│
-└── README.md (ở root)
+└── frontend/                # Vue 3 Frontend
+    ├── public/
+    ├── src/
+    │   ├── api/
+    │   │   └── axios.js
+    │   ├── assets/
+    │   ├── components/
+    │   │   ├── common/
+    │   │   └── layout/
+    │   ├── composables/
+    │   ├── router/
+    │   │   └── index.js
+    │   ├── services/
+    │   │   ├── auth.service.js
+    │   │   └── booking.service.js
+    │   ├── stores/
+    │   │   ├── auth.js
+    │   │   └── booking.js
+    │   ├── utils/
+    │   ├── views/
+    │   │   ├── auth/
+    │   │   │   ├── LoginView.vue
+    │   │   │   └── RegisterView.vue
+    │   │   ├── booking/
+    │   │   │   ├── BookingCreateView.vue
+    │   │   │   ├── BookingEditView.vue
+    │   │   │   └── DashboardView.vue
+    │   │   ├── home/
+    │   │   │   └── HomeView.vue
+    │   │   └── user/
+    │   │       └── UserProfileView.vue
+    │   ├── App.vue
+    │   ├── main.js
+    │   └── style.css
+    └── package.json

@@ -80,6 +80,8 @@ BACKEND_CORS_ORIGINS=["http://localhost:5173"]
 ```
 
 ```bash
+# Windows
+venv\Scripts\activate
 alembic upgrade head
 uvicorn app.main:app --reload --port 8000
 ```

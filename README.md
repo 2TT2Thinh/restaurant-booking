@@ -126,15 +126,13 @@ npm run dev
 | PATCH | `/me` | Cập nhật họ tên, số điện thoại |
 | POST | `/me/change-password` | Đổi mật khẩu |
 
-### Restaurants — `/api/v1/restaurants`
+### System
 
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
-| GET | `/` | Danh sách nhà hàng |
-| POST | `/` | Tạo nhà hàng mới |
-| GET | `/{id}` | Chi tiết nhà hàng |
-| PUT | `/{id}` | Cập nhật nhà hàng |
-| DELETE | `/{id}` | Xóa nhà hàng |
+| GET | `/` | Root |
+| GET | `/health` | Health check |
+
 
 ### Bookings — `/api/v1/bookings`
 

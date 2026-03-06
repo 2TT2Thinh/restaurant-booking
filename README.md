@@ -22,7 +22,6 @@ restaurant-booking/
 │   │   ├── api/v1/endpoints/
 │   │   │   ├── auth.py          # Đăng ký / Đăng nhập
 │   │   │   ├── users.py         # Profile, đổi mật khẩu
-│   │   │   ├── restaurants.py   # Quản lý nhà hàng
 │   │   │   └── bookings.py      # Đặt bàn CRUD
 │   │   ├── core/
 │   │   │   ├── config.py

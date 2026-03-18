@@ -3,7 +3,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.endpoints.auth import router as auth_router
 from app.api.v1.endpoints.bookings import router as booking_router
 from app.api.v1.endpoints.user import router as user_router
+from app.api.v1.endpoints.restaurants import router as restaurant_router  # THÊM
+
 app = FastAPI(title="Restaurant Booking API")
+
+# MIDDLEWARE phải đặt TRƯỚC include_router
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def read_root():
@@ -13,17 +24,7 @@ def read_root():
 def health_check():
     return {"status": "ok"}
 
-
-
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173"], # Cho phép Frontend này truy cập
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(booking_router, prefix="/api/v1/bookings", tags=["Bookings"])
 app.include_router(user_router, prefix="/api/v1/users", tags=["Users"])
+app.include_router(restaurant_router, prefix="/api/v1/restaurants", tags=["Restaurants"])  

@@ -68,3 +68,15 @@ async def get_current_user(
         )
         
     return user
+
+# Thêm vào cuối file deps.py
+async def get_current_admin(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    """Chỉ cho phép user có role = 'admin' truy cập"""
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Bạn không có quyền thực hiện hành động này"
+        )
+    return current_user

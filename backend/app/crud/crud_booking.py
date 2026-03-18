@@ -2,34 +2,66 @@ from typing import List, Optional
 from datetime import datetime,timezone, timedelta
 from sqlalchemy import func, or_, select, and_, case
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
+
 from app.models.booking import Booking
 from app.schemas.booking import BookingCreate, BookingUpdate
 from app.core.config import settings
+from sqlalchemy.orm import selectinload
+from app.models.restaurant import Restaurant
+from fastapi import HTTPException
 
 async def get_user_bookings(db: AsyncSession, user_id: int):
-    # 1. Tạo câu lệnh select (SQLAlchemy 2.0 style)
-    query = select(Booking).where(Booking.user_id == user_id).order_by(Booking.created_at.desc())
-    
-    # 2. THỰC THI: Bắt buộc phải có await ở đây
+    query = (
+        select(Booking)
+        .options(selectinload(Booking.restaurant))  # THÊM dòng này
+        .where(Booking.user_id == user_id)
+        .order_by(Booking.created_at.desc())
+    )
     result = await db.execute(query)
-    
-    # 3. TRẢ VỀ: scalars() giúp lấy ra danh sách object Booking sạch sẽ
     return result.scalars().all()
 
 # Hàm tạo lưu vào database một booking mới, nhận vào dữ liệu từ BookingCreate và user_id để gán cho booking đó
 async def create_booking(db: AsyncSession, obj_in: BookingCreate, user_id: int):
-    # Chuyển dữ liệu từ Pydantic Schema sang SQLAlchemy Model
-    new_booking = Booking(
-        **obj_in.model_dump(), # Lấy hết data từ Schema
-        user_id=user_id,       # Tự động gán ID của người đang đăng nhập
-        status="pending"       # Mặc định là đang chờ
+    # THÊM: Check nhà hàng tồn tại
+    restaurant = await db.get(Restaurant, obj_in.restaurant_id)
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Nhà hàng không tồn tại")
+
+    # THÊM: Check số khách không vượt capacity
+    if obj_in.number_of_guests > restaurant.max_capacity:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Nhà hàng chỉ chứa tối đa {restaurant.max_capacity} khách"
+        )
+
+    # THÊM: Check trùng giờ
+    conflict = await db.execute(
+        select(Booking).where(
+            Booking.restaurant_id == obj_in.restaurant_id,
+            Booking.booking_date == obj_in.booking_date,
+            Booking.booking_time == obj_in.booking_time,
+            Booking.status != "cancelled"
+        )
     )
-    
+    if conflict.scalars().first():
+        raise HTTPException(status_code=400, detail="Khung giờ này đã có người đặt")
+
+    # GIỮ NGUYÊN phần tạo booking
+    new_booking = Booking(
+        **obj_in.model_dump(),
+        user_id=user_id,
+        status="pending"
+    )
     db.add(new_booking)
-    await db.commit()          # Lưu vào DB
-    await db.refresh(new_booking) # Lấy lại ID và các trường tự động tạo
-    return new_booking
+    await db.commit()
+    
+    # Query lại với selectinload để load restaurant relationship
+    result = await db.execute(
+        select(Booking)
+        .options(selectinload(Booking.restaurant))
+        .where(Booking.id == new_booking.id)
+    )
+    return result.scalars().first()
 
 async def update_booking(db: AsyncSession, booking_id: int, obj_in: BookingUpdate, user_id: int):
     # 1. Tìm đơn đặt bàn
@@ -48,8 +80,13 @@ async def update_booking(db: AsyncSession, booking_id: int, obj_in: BookingUpdat
 
     db.add(db_obj)
     await db.commit()
-    await db.refresh(db_obj)
-    return db_obj
+
+    result = await db.execute(
+        select(Booking)
+        .options(selectinload(Booking.restaurant))
+        .where(Booking.id == db_obj.id)
+    )
+    return result.scalars().first()
 
 
 async def delete_booking(db: AsyncSession, booking_id: int, user_id: int):
@@ -70,34 +107,34 @@ async def delete_booking(db: AsyncSession, booking_id: int, user_id: int):
 
 
 async def get_multi_bookings(
-    db: AsyncSession, 
-    user_id: int, 
-    search: Optional[str] = None, 
+    db: AsyncSession,
+    user_id: int,
+    search: Optional[str] = None,
     status: Optional[str] = None,
-    skip: int = 0, 
+    skip: int = 0,
     limit: int = 100
 ) -> List[Booking]:
-    # 1. Khởi tạo câu lệnh query cơ bản (Lọc theo chủ sở hữu trước)
-    query = select(Booking).where(Booking.user_id == user_id)
+    # THÊM selectinload để load restaurant info cùng lúc, tránh query N+1
+    query = (
+        select(Booking)
+        .options(selectinload(Booking.restaurant))
+        .where(Booking.user_id == user_id)
+    )
 
-    # 2. Xử lý tìm kiếm (Search)
     if search:
-        # trim() và loại bỏ khoảng trắng thừa để search chính xác hơn
         search_term = f"%{search.strip()}%"
-        # ilike tìm không phân biệt hoa thường
-        query = query.where(Booking.restaurant_name.ilike(search_term))
+        # SỬA: JOIN Restaurant thay vì search Booking.restaurant_name
+        query = query.join(Restaurant).where(
+            Restaurant.name.ilike(search_term)
+        )
 
-    # 3. Xử lý lọc theo trạng thái (Filter)
-    # Status != "all" giúp trả về tất cả nếu người dùng nhấn vào Tab "Tất cả"
+    # GIỮ NGUYÊN phần status, order, offset, limit
     if status and status.lower() != "all":
         query = query.where(Booking.status == status.lower())
 
-    # 4. Sắp xếp (Audit Timestamps): Mới nhất lên đầu
-    # Sau đó mới thực hiện phân trang (offset/limit)
     query = query.order_by(Booking.created_at.desc())
     query = query.offset(skip).limit(limit)
-    
-    # 5. Thực thi
+
     result = await db.execute(query)
     return result.scalars().all()
 

@@ -1,428 +1,352 @@
 <template>
-  <v-layout>
-    <v-app-bar flat border class="px-md-10 bg-white">
-      <div class="d-flex align-center gap-2 text-primary">
-        <v-icon size="32">mdi-rhombus-split</v-icon>
-        <v-toolbar-title class="font-weight-black text-black">BookingTracker</v-toolbar-title>
-      </div>
-      <v-spacer></v-spacer>
-      <v-btn variant="text" class="text-none font-weight-bold" to="/dashboard">Dashboard</v-btn>
-      <v-btn variant="text" class="text-none font-weight-bold">My Bookings</v-btn>
-      <v-avatar size="40" class="ml-4 border">
-        <v-img src="https://randomuser.me/api/portraits/men/1.jpg"></v-img>
-      </v-avatar>
-    </v-app-bar>
+  <v-container fluid class="bg-background-light min-h-screen pa-6 pa-md-10">
+    <v-row justify="center">
+      <v-col cols="12" xl="10">
 
-    <v-main class="bg-background-light min-h-screen">
-      <v-container fluid class="pa-0 py-10">
-        <v-row justify="center" class="ma-0">
-          <v-col cols="12" md="8" lg="6">
-            
-            <div class="mb-8 px-4"> 
-              <h1 class="text-h3 font-weight-black mb-2">Create New Booking</h1>
-              <p class="text-subtitle-1 text-brown">Enter the details of your upcoming visit below.</p>
-            </div>
+        <!-- BREADCRUMB -->
+        <div class="d-flex align-center gap-2 mb-4 text-body-2">
+          <router-link to="/dashboard" class="text-decoration-none text-primary font-weight-medium">
+            Bookings
+          </router-link>
+          <v-icon size="16" color="grey">mdi-chevron-right</v-icon>
+          <span class="text-grey-darken-1">Create New</span>
+        </div>
 
-            <v-card variant="outlined" rounded="xl" class="pa-8 bg-white border-subtle shadow-sm">
+        <div class="mb-8">
+          <h1 class="text-h3 font-weight-black tracking-tight mb-2">Create New Booking</h1>
+          <p class="text-subtitle-1 text-brown">Chọn nhà hàng và điền thông tin đặt bàn bên dưới.</p>
+        </div>
+
+        <v-alert v-if="errorMessage" type="error" variant="tonal" rounded="lg" class="mb-6" closable
+          @click:close="errorMessage = ''">
+          {{ errorMessage }}
+        </v-alert>
+
+        <v-row>
+          <!-- CỘT TRÁI: FORM -->
+          <v-col cols="12" lg="7">
+            <v-card variant="outlined" rounded="xl" class="pa-8 bg-white border-subtle">
               <v-form @submit.prevent="handleCreate">
-                
-                <div class="mb-6">
-                  <label class="text-subtitle-2 font-weight-bold mb-2 d-block">Restaurant Name (required)</label>
-                  <v-text-field
-                    v-model="form.restaurant_name"
-                    placeholder="e.g. The Golden Grill"
-                    variant="outlined"
-                    rounded="lg"
-                    prepend-inner-icon="mdi-silverware-fork-knife"
-                    color="primary"
-                    required
-                  ></v-text-field>
+
+                <!-- CHỌN NHÀ HÀNG -->
+                <div class="d-flex align-center gap-2 mb-5 pb-2 border-b">
+                  <v-avatar color="orange-lighten-5" size="32" rounded="lg">
+                    <v-icon color="primary" size="18">mdi-silverware-fork-knife</v-icon>
+                  </v-avatar>
+                  <h2 class="text-h6 font-weight-bold">Chọn Nhà Hàng</h2>
                 </div>
 
-                <v-sheet border rounded="lg" class="pa-5 mb-6 bg-grey-lighten-5">
-                  <label class="text-subtitle-2 font-weight-bold mb-2 d-block">Restaurant Address</label>
-                  <v-textarea
-                    v-model="form.restaurant_address"
-                    placeholder="Enter the full street address..."
-                    variant="outlined"
-                    rounded="lg"
-                    bg-color="white"
-                    rows="3"
-                  ></v-textarea>
+                <v-text-field
+                  v-model="restaurantSearch"
+                  placeholder="Tìm theo tên hoặc loại ẩm thực..."
+                  variant="outlined"
+                  rounded="lg"
+                  prepend-inner-icon="mdi-magnify"
+                  color="primary"
+                  hide-details
+                  class="mb-3"
+                  @update:model-value="onRestaurantSearch"
+                ></v-text-field>
 
-                  <v-row align="end" class="mt-2">
-                    <v-col cols="12" sm="4">
-                      <v-btn
-                        variant="outlined"
-                        color="primary"
-                        prepend-icon="mdi-map-marker"
-                        block
-                        height="48"
-                        class="text-none font-weight-bold"
-                        @click="getCoordinates"
-                      >
-                        Get Coordinates
-                      </v-btn>
-                    </v-col>
-                    <v-col cols="6" sm="4">
-  <label class="text-caption font-weight-bold text-uppercase text-brown">Latitude</label>
-  <v-text-field
-    v-model="form.latitude"
-    readonly
-    density="compact"
-    variant="solo-filled"  bg-color="grey-lighten-3"
-    rounded="lg"
-    hide-details
-  ></v-text-field>
-</v-col>
-                    <v-col cols="6" sm="4">
-  <label class="text-caption font-weight-bold text-uppercase text-brown">Longitude</label>
-  <v-text-field
-    v-model="form.longitude"
-    readonly
-    density="compact"
-    variant="solo-filled"  bg-color="grey-lighten-3"
-    rounded="lg"
-    hide-details
-  ></v-text-field>
-</v-col>
-                  </v-row>
+                <v-progress-linear v-if="loadingRestaurants" indeterminate color="primary" rounded class="mb-2"></v-progress-linear>
+
+                <v-sheet border rounded="lg" class="overflow-hidden mb-6" style="max-height: 260px; overflow-y: auto;">
+                  <v-list density="compact" class="pa-0">
+                    <v-list-item
+                      v-for="r in restaurants"
+                      :key="r.id"
+                      :class="form.restaurant_id === r.id ? 'bg-orange-lighten-5 border-left-primary' : ''"
+                      class="py-3"
+                      @click="selectRestaurant(r)"
+                    >
+                      <template v-slot:prepend>
+                        <v-avatar
+                          :color="form.restaurant_id === r.id ? 'primary' : 'grey-lighten-3'"
+                          size="36" rounded="lg" class="mr-3"
+                        >
+                          <v-icon :color="form.restaurant_id === r.id ? 'white' : 'grey'" size="18">
+                            mdi-silverware-fork-knife
+                          </v-icon>
+                        </v-avatar>
+                      </template>
+                      <v-list-item-title class="font-weight-bold text-body-2">{{ r.name }}</v-list-item-title>
+                      <v-list-item-subtitle class="text-caption mt-1">
+                        <v-icon size="12" class="mr-1">mdi-map-marker-outline</v-icon>{{ r.address }}
+                      </v-list-item-subtitle>
+                      <template v-slot:append>
+                        <div class="d-flex flex-column align-end gap-1">
+                          <v-chip v-if="r.cuisine_type" size="x-small" color="primary" variant="tonal">{{ r.cuisine_type }}</v-chip>
+                          <v-chip size="x-small" color="grey" variant="tonal">
+                            <v-icon start size="10">mdi-account-group</v-icon>{{ r.max_capacity }}
+                          </v-chip>
+                        </div>
+                      </template>
+                    </v-list-item>
+                    <v-list-item v-if="restaurants.length === 0 && !loadingRestaurants" class="py-6">
+                      <v-list-item-title class="text-grey text-center text-body-2">
+                        Không tìm thấy nhà hàng nào
+                      </v-list-item-title>
+                    </v-list-item>
+                  </v-list>
                 </v-sheet>
+
+                <v-divider class="mb-6"></v-divider>
+
+                <!-- THỜI GIAN & KHÁCH -->
+                <div class="d-flex align-center gap-2 mb-5 pb-2 border-b">
+                  <v-avatar color="orange-lighten-5" size="32" rounded="lg">
+                    <v-icon color="primary" size="18">mdi-calendar-clock</v-icon>
+                  </v-avatar>
+                  <h2 class="text-h6 font-weight-bold">Thời Gian & Số Khách</h2>
+                </div>
 
                 <v-row>
                   <v-col cols="12" sm="4">
-                    <label class="text-subtitle-2 font-weight-bold mb-2 d-block">Date</label>
-                    <v-text-field
-                      v-model="form.booking_date"
-                      type="date"
-                      variant="outlined"
-                      rounded="lg"
-                      prepend-inner-icon="mdi-calendar"
-                    ></v-text-field>
+                    <label class="text-subtitle-2 font-weight-bold mb-2 d-block">Ngày đặt <span class="text-error">*</span></label>
+                    <v-text-field v-model="form.booking_date" type="date" variant="outlined" rounded="lg" color="primary" :min="today"></v-text-field>
                   </v-col>
                   <v-col cols="12" sm="4">
-                    <label class="text-subtitle-2 font-weight-bold mb-2 d-block">Time</label>
-                    <v-text-field
-                      v-model="form.booking_time"
-                      type="time"
-                      variant="outlined"
-                      rounded="lg"
-                      prepend-inner-icon="mdi-clock-outline"
-                    ></v-text-field>
+                    <label class="text-subtitle-2 font-weight-bold mb-2 d-block">Giờ đặt <span class="text-error">*</span></label>
+                    <v-text-field v-model="form.booking_time" type="time" variant="outlined" rounded="lg" color="primary"></v-text-field>
                   </v-col>
                   <v-col cols="12" sm="4">
-                    <label class="text-subtitle-2 font-weight-bold mb-2 d-block">Guests</label>
-                    <v-text-field
-                      v-model="form.number_of_guests"
-                      type="number"
-                      min="1"
-                      variant="outlined"
-                      rounded="lg"
-                      prepend-inner-icon="mdi-account-group"
-                    ></v-text-field>
+                    <label class="text-subtitle-2 font-weight-bold mb-2 d-block">Số khách <span class="text-error">*</span></label>
+                    <v-text-field v-model.number="form.number_of_guests" type="number" min="1"
+                      :max="selectedRestaurant?.max_capacity || 999" variant="outlined" rounded="lg"
+                      prepend-inner-icon="mdi-account-group" color="primary"></v-text-field>
                   </v-col>
                 </v-row>
 
-                <v-divider class="my-6"></v-divider>
+                <v-divider class="mb-6"></v-divider>
+
+                <!-- GHI CHÚ -->
+                <div class="d-flex align-center gap-2 mb-5 pb-2 border-b">
+                  <v-avatar color="orange-lighten-5" size="32" rounded="lg">
+                    <v-icon color="primary" size="18">mdi-note-text-outline</v-icon>
+                  </v-avatar>
+                  <h2 class="text-h6 font-weight-bold">Ghi Chú Đặc Biệt</h2>
+                </div>
+
+                <v-textarea v-model="form.special_notes"
+                  placeholder="Ví dụ: Bàn gần cửa sổ, có trẻ em, dị ứng thức ăn..."
+                  variant="outlined" rounded="lg" rows="3" color="primary" class="mb-6"></v-textarea>
+
                 <div class="d-flex justify-end gap-4">
-                  <v-btn
-                    variant="flat"
-                    color="grey-lighten-3"
-                    height="48"
-                    min-width="120"
-                    class="text-none font-weight-bold"
-                    @click="router.push('/dashboard')"
-                  >
-                    Cancel
-                  </v-btn>
-                  <v-btn
-                    variant="flat"
-                    color="primary"
-                    height="48"
-                    min-width="160"
-                    class="text-none font-weight-bold shadow-orange"
-                    type="submit"
-                    :loading="loading"
-                  >
-                    Create Booking
+                  <v-btn variant="flat" color="grey-lighten-3" height="48" min-width="120"
+                    class="text-none font-weight-bold" @click="router.push('/dashboard')">Hủy</v-btn>
+                  <v-btn variant="flat" color="primary" height="48" min-width="160"
+                    class="text-none font-weight-bold shadow-orange" type="submit" :loading="loading">
+                    <v-icon start>mdi-calendar-plus</v-icon>Tạo Booking
                   </v-btn>
                 </div>
+
               </v-form>
             </v-card>
+          </v-col>
 
-         <v-hover v-slot="{ isHovering, props }">
-  <v-card
-    v-bind="props"
-    class="mt-8 rounded-xl border-subtle d-flex align-center justify-center pointer overflow-hidden"
-    height="200"
-    flat
-    :key="`${form.latitude}-${form.longitude}`" 
-    :style="{
-      background: `url(https://static-maps.yandex.ru/1.x/?lang=en_US&ll=${form.longitude},${form.latitude}&z=15&l=map&size=600,200) center/cover no-repeat`
-    }"
-  >
-    <v-overlay
-      :model-value="isHovering"
-      contained
-      scrim="#000"
-      class="align-center justify-center"
-      persistent
-    >
-      <v-btn
-        color="orange-darken-1"
-        prepend-icon="mdi-map-marker-radius"
-        size="large"
-        elevation="4"
-        rounded="pill"
-        class="font-weight-bold text-none"
-        @click="mapDialog = true"
-      >
-        Check Map View
-      </v-btn>
-    </v-overlay>
-  </v-card>
-</v-hover>
+          <!-- CỘT PHẢI -->
+          <v-col cols="12" lg="5">
 
-<v-dialog v-model="mapDialog" max-width="900" persistent>
-  <v-card rounded="xl">
-    <v-card-title class="d-flex justify-space-between align-center pa-4 bg-white">
-      <div class="d-flex align-center">
-        <v-icon color="primary" class="mr-2">mdi-google-maps</v-icon>
-        <span class="text-h6 font-weight-bold">Vị trí nhà hàng</span>
-      </div>
-      <v-btn icon="mdi-close" variant="text" @click="mapDialog = false"></v-btn>
-    </v-card-title>
-    
-   <v-card-text class="pa-0" style="background-color: white;">
-  <div 
-    id="google-map-container" 
-    style="width: 100%; height: 450px; border-bottom: 1px solid #eee;"
-  ></div>
-</v-card-text>
-    
-    <v-card-actions class="pa-4 bg-grey-lighten-4">
-      <v-icon color="primary" class="mr-2">mdi-map-marker</v-icon>
-      <span class="text-caption text-brown font-weight-bold">{{ form.restaurant_address }}</span>
-      <v-spacer></v-spacer>
-      <v-btn color="primary" variant="flat" rounded="lg" @click="mapDialog = false">Xác nhận</v-btn>
-    </v-card-actions>
-  </v-card>
-</v-dialog>
+            <!-- INFO NHÀ HÀNG -->
+            <v-card variant="outlined" rounded="xl" class="bg-white border-subtle mb-4 overflow-hidden">
+              <div class="pa-4 d-flex align-center gap-3" style="background-color: #ee7c2b;">
+                <v-icon color="white" size="20">mdi-storefront-outline</v-icon>
+                <span class="text-white font-weight-bold text-body-1">Thông Tin Nhà Hàng</span>
+              </div>
+
+              <div v-if="!selectedRestaurant" class="pa-8 text-center">
+                <v-icon size="56" color="grey-lighten-2" class="mb-3">mdi-silverware-fork-knife</v-icon>
+                <p class="text-body-2 text-grey">Chọn nhà hàng bên trái để xem thông tin chi tiết</p>
+              </div>
+
+              <div v-else class="pa-5">
+                <div class="d-flex align-center gap-3 mb-4">
+                  <v-avatar color="orange-lighten-5" size="52" rounded="lg">
+                    <v-icon color="primary" size="28">mdi-silverware-fork-knife</v-icon>
+                  </v-avatar>
+                  <div>
+                    <div class="font-weight-black text-body-1">{{ selectedRestaurant.name }}</div>
+                    <v-chip v-if="selectedRestaurant.cuisine_type" size="x-small" color="primary" variant="tonal" class="mt-1">
+                      {{ selectedRestaurant.cuisine_type }}
+                    </v-chip>
+                  </div>
+                </div>
+                <v-divider class="mb-4"></v-divider>
+                <div class="d-flex flex-column gap-3">
+                  <div class="d-flex align-center gap-3">
+                    <v-icon color="primary" size="18">mdi-map-marker-outline</v-icon>
+                    <span class="text-body-2">{{ selectedRestaurant.address }}</span>
+                  </div>
+                  <div v-if="selectedRestaurant.phone" class="d-flex align-center gap-3">
+                    <v-icon color="primary" size="18">mdi-phone-outline</v-icon>
+                    <span class="text-body-2">{{ selectedRestaurant.phone }}</span>
+                  </div>
+                  <div v-if="selectedRestaurant.opening_time" class="d-flex align-center gap-3">
+                    <v-icon color="primary" size="18">mdi-clock-outline</v-icon>
+                    <span class="text-body-2">{{ selectedRestaurant.opening_time }} – {{ selectedRestaurant.closing_time }}</span>
+                  </div>
+                  <div class="d-flex align-center gap-3">
+                    <v-icon color="primary" size="18">mdi-account-group-outline</v-icon>
+                    <span class="text-body-2">Tối đa: <strong>{{ selectedRestaurant.max_capacity }} khách</strong></span>
+                  </div>
+                </div>
+              </div>
+            </v-card>
+
+            <!-- TÓM TẮT BOOKING -->
+            <v-card variant="outlined" rounded="xl" class="bg-white border-subtle overflow-hidden">
+              <div class="pa-4 bg-orange-lighten-5 d-flex align-center gap-3">
+                <v-icon color="primary" size="20">mdi-clipboard-text-outline</v-icon>
+                <span class="text-primary font-weight-bold text-body-1">Tóm Tắt Booking</span>
+              </div>
+              <div class="pa-5">
+                <div class="d-flex flex-column gap-3">
+                  <div class="d-flex justify-space-between align-center">
+                    <span class="text-caption text-medium-emphasis font-weight-bold text-uppercase">Nhà hàng</span>
+                    <span class="text-body-2 font-weight-bold text-right" style="max-width:60%">
+                      {{ selectedRestaurant?.name || '—' }}
+                    </span>
+                  </div>
+                  <v-divider></v-divider>
+                  <div class="d-flex justify-space-between align-center">
+                    <span class="text-caption text-medium-emphasis font-weight-bold text-uppercase">Ngày</span>
+                    <span class="text-body-2 font-weight-bold">{{ form.booking_date || '—' }}</span>
+                  </div>
+                  <v-divider></v-divider>
+                  <div class="d-flex justify-space-between align-center">
+                    <span class="text-caption text-medium-emphasis font-weight-bold text-uppercase">Giờ</span>
+                    <span class="text-body-2 font-weight-bold">{{ form.booking_time || '—' }}</span>
+                  </div>
+                  <v-divider></v-divider>
+                  <div class="d-flex justify-space-between align-center">
+                    <span class="text-caption text-medium-emphasis font-weight-bold text-uppercase">Số khách</span>
+                    <v-chip size="small" color="primary" variant="tonal">
+                      <v-icon start size="14">mdi-account-group</v-icon>{{ form.number_of_guests }} người
+                    </v-chip>
+                  </div>
+                  <template v-if="form.special_notes">
+                    <v-divider></v-divider>
+                    <div class="d-flex flex-column gap-1">
+                      <span class="text-caption text-medium-emphasis font-weight-bold text-uppercase">Ghi chú</span>
+                      <span class="text-body-2 text-grey-darken-1 font-italic">{{ form.special_notes }}</span>
+                    </div>
+                  </template>
+                </div>
+
+                <v-sheet color="orange-lighten-5" rounded="lg" class="pa-3 mt-5 d-flex align-center gap-2">
+                  <v-icon color="warning" size="18">mdi-clock-outline</v-icon>
+                  <span class="text-caption font-weight-bold text-orange-darken-2">
+                    Sẽ ở trạng thái <strong>PENDING</strong> sau khi tạo
+                  </span>
+                </v-sheet>
+              </div>
+            </v-card>
 
           </v-col>
         </v-row>
-        
-        <footer class="text-center pa-8 text-brown opacity-70">
-          <p>© 2024 BookingTracker. All rights reserved.</p>
-        </footer>
-      </v-container>
-    </v-main>
-  </v-layout>
+      </v-col>
+    </v-row>
+
+    <v-snackbar v-model="snackbar.show" :color="snackbar.color" rounded="lg" timeout="3000" location="bottom right">
+      {{ snackbar.message }}
+    </v-snackbar>
+  </v-container>
 </template>
 
 <script setup>
-import { ref, nextTick, watch } from 'vue';
-import { useRouter } from 'vue-router';
-import { setOptions, importLibrary } from '@googlemaps/js-api-loader';
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import apiClient from '@/api/axios'
 
-
-const router = useRouter();
-const loading = ref(false);
-// Lấy API Key từ file .env
-const mapDialog = ref(false); // Biến để mở/đóng bản đồ
-const GOOGLE_MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-if (!GOOGLE_MAPS_KEY) {
-  console.error("LỖI: VITE_GOOGLE_MAPS_API_KEY không tồn tại trong .env");
-} else {
-  // Cấu hình loader ngay khi script vừa load
-  setOptions({
-    apiKey: GOOGLE_MAPS_KEY,
-    version: "weekly",
-    libraries: ["places", "geocoding"] // Đăng ký sẵn các thư viện cần dùng
-  });
-}
-// Khai báo biến global trong script để giữ reference
-let mapInstance = null;
-let markerInstance = null;
-
+const router = useRouter()
+const loading = ref(false)
+const loadingRestaurants = ref(false)
+const errorMessage = ref('')
+const restaurants = ref([])
+const selectedRestaurant = ref(null)
+const restaurantSearch = ref('')
+const snackbar = ref({ show: false, message: '', color: 'success' })
+const today = new Date().toISOString().split('T')[0]
 
 const form = ref({
-  restaurant_name: '',
-  restaurant_address: '',
-  latitude: 10.7769,
-  longitude: 106.7009,
-  booking_date: '',
-  booking_time: '',
-  number_of_guests: 2
-});
+  restaurant_id: null,
+  booking_date: today,
+  booking_time: '19:00',
+  number_of_guests: 2,
+  special_notes: ''
+})
 
+let searchTimeout = null
+
+const showSnackbar = (message, color = 'success') => {
+  snackbar.value = { show: true, message, color }
+}
+
+const selectRestaurant = (r) => {
+  form.value.restaurant_id = r.id
+  selectedRestaurant.value = r
+}
+
+const fetchRestaurants = async (search = '') => {
+  loadingRestaurants.value = true
+  try {
+    const params = {}
+    if (search.trim()) params.search = search.trim()
+    const res = await apiClient.get('/restaurants/', { params })
+    restaurants.value = res.data
+  } catch (err) {
+    console.error('Lỗi load nhà hàng:', err)
+  } finally {
+    loadingRestaurants.value = false
+  }
+}
+
+const onRestaurantSearch = () => {
+  clearTimeout(searchTimeout)
+  searchTimeout = setTimeout(() => fetchRestaurants(restaurantSearch.value), 400)
+}
 
 const handleCreate = async () => {
-  loading.value = true;
-  const token = localStorage.getItem('user_token');
+  if (!form.value.restaurant_id) return (errorMessage.value = 'Vui lòng chọn nhà hàng!')
+  if (!form.value.booking_date) return (errorMessage.value = 'Vui lòng chọn ngày đặt!')
+  if (!form.value.booking_time) return (errorMessage.value = 'Vui lòng chọn giờ đặt!')
+  if (form.value.number_of_guests < 1) return (errorMessage.value = 'Số khách phải lớn hơn 0!')
 
-  if (!token) {
-    alert("Vui lòng đăng nhập lại!");
-    return;
-  }
-
-  // Chuyển đổi dữ liệu ĐÚNG theo yêu cầu của Pydantic Model:
-  // 1. booking_date: kiểu date (YYYY-MM-DD) -> form.value.booking_date đã đúng định dạng này
-  // 2. booking_time: Backend đang để kiểu DATETIME -> phải gửi chuỗi ISO đầy đủ
-  const isoDateTime = `${form.value.booking_date}T${form.value.booking_time}:00`;
-
-  const payload = {
-    restaurant_name: form.value.restaurant_name,
-    restaurant_address: form.value.restaurant_address,
-    booking_date: form.value.booking_date, // BẮT BUỘC (kiểu date)
-    booking_time: isoDateTime,            // BẮT BUỘC (kiểu datetime theo model của bạn)
-    number_of_guests: parseInt(form.value.number_of_guests),
-    latitude: form.value.latitude ? parseFloat(form.value.latitude) : null,
-    longitude: form.value.longitude ? parseFloat(form.value.longitude) : null
-  };
-
+  loading.value = true
+  errorMessage.value = ''
   try {
-    const res = await fetch('http://127.0.0.1:8000/api/v1/bookings/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(payload)
-    });
-
-    if (res.ok) {
-      alert("Tạo đơn đặt bàn thành công!");
-      router.push('/dashboard');
-    } else {
-      const errorData = await res.json();
-      console.error("Lỗi chi tiết:", errorData);
-      // Hiển thị lỗi cụ thể để user biết thiếu trường nào
-      alert(`Lỗi: ${errorData.detail[0].msg} tại ${errorData.detail[0].loc[1]}`);
-    }
+    await apiClient.post('/bookings/', {
+      restaurant_id: form.value.restaurant_id,
+      booking_date: form.value.booking_date,
+      booking_time: form.value.booking_time + ':00',
+      number_of_guests: form.value.number_of_guests,
+      special_notes: form.value.special_notes || null
+    })
+    showSnackbar('Tạo đơn đặt bàn thành công!')
+    setTimeout(() => router.push('/dashboard'), 1000)
   } catch (err) {
-    console.error("Lỗi kết nối:", err);
+    const detail = err.response?.data?.detail
+    errorMessage.value = typeof detail === 'string' ? detail : 'Có lỗi xảy ra, vui lòng thử lại!'
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
-// Hàm lấy tọa độ từ địa chỉ (Geocoding) bằng Google Maps API
-// 2. Hàm lấy tọa độ (Geocoding)
-const getCoordinates = async () => {
-  if (!form.value.restaurant_address) {
-    alert("Vui lòng nhập địa chỉ trước!");
-    return;
-  }
-  
-  loading.value = true; // Hiện icon xoay xoay
-  
-  // Giả lập độ trễ mạng 1.5 giây cho giống thật
-  setTimeout(() => {
-    // Gán tọa độ giả (khu vực Quận 1, TP.HCM)
-    form.value.latitude = 10.7769 + (Math.random() - 0.5) * 0.01;
-    form.value.longitude = 106.7009 + (Math.random() - 0.5) * 0.01;
-    
-    if (mapInstance && markerInstance) {
-      const newPos = { lat: form.value.latitude, lng: form.value.longitude };
-      mapInstance.setCenter(newPos);
-      markerInstance.setPosition(newPos);
-    }
-    
-    loading.value = false;
-    alert("Đã cập nhật tọa độ từ địa chỉ!");
-  }, 1500);
-};
+}
 
-// 3. Hàm khởi tạo bản đồ
-const initMap = async () => {
-  try {
-    const { Map } = await importLibrary("maps");
-    const { Marker } = await importLibrary("marker");
-
-    const position = { 
-      lat: parseFloat(form.value.latitude) || 10.7769, 
-      lng: parseFloat(form.value.longitude) || 106.7009 
-    };
-
-    const mapElement = document.getElementById("google-map-container");
-    if (!mapElement) return;
-
-    if (!mapInstance) {
-      mapInstance = new Map(mapElement, {
-        center: position,
-        zoom: 16,
-        mapId: "DEMO_MAP_ID", // Thêm Map ID để dùng vector engine sáng hơn
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
-        // Bộ styles này ép màu sắc rực rỡ hơn để bù vào phần bị Google làm tối
-        styles: [
-          { "stylers": [{ "saturation": 5 }, { "lightness": 15 }] },
-          {
-            "featureType": "poi",
-            "elementType": "labels",
-            "stylers": [{ "visibility": "on" }]
-          }
-        ]
-      });
-
-      markerInstance = new Marker({
-        map: mapInstance,
-        position: position,
-        // Lưu ý: dùng window.google để tránh lỗi undefined nếu script chưa load kịp
-        animation: window.google?.maps?.Animation?.DROP, 
-      });
-    } else {
-      mapInstance.setCenter(position);
-      markerInstance.setPosition(position);
-    }
-  } catch (error) {
-    console.error("Lỗi Map:", error);
-  }
-};
-
-// 4. Theo dõi để mở Map
-watch(mapDialog, async (newVal) => {
-  if (newVal) {
-    await nextTick();
-    setTimeout(() => {
-      initMap();
-    }, 400); 
-  }
-});
-
-
+onMounted(async () => {
+  if (!localStorage.getItem('user_token')) return router.push('/login')
+  await fetchRestaurants()
+})
 </script>
 
 <style scoped>
-.text-primary { color: #ee7c2b !important; }
-.bg-primary { background-color: #ee7c2b !important; }
 .bg-background-light { background-color: #f8f7f6 !important; }
 .text-brown { color: #9a6c4c !important; }
 .border-subtle { border: 1px solid #e7d9cf !important; }
-
-.shadow-orange {
-  box-shadow: 0 4px 14px 0 rgba(238, 124, 43, 0.39) !important;
-}
-
+.tracking-tight { letter-spacing: -0.015em !important; }
+.gap-1 { gap: 4px; }
 .gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
 .gap-4 { gap: 16px; }
-.pointer { cursor: pointer; }
-/* Nhắm trực tiếp vào lớp phủ xám của Google để xóa bỏ nó */
-#google-map-container :deep(.gm-style) {
-  /* Ép độ sáng lên 1.2 lần và tăng độ tương phản */
-  filter: brightness(1.2) contrast(1.1) saturate(1.2) !important;
-}
-
-/* Ẩn dòng chữ 'For development purposes only' và các thông báo lỗi */
-#google-map-container :deep(.gm-err-container),
-#google-map-container :deep(.gm-style-cc),
-#google-map-container :deep(a[href^="https://maps.google.com/maps?ll"]) {
-  display: none !important;
-}
-
-/* Xóa bỏ lớp overlay màu xám nhạt mà Google phủ lên trên */
-#google-map-container :deep(.gm-style > div:first-child) {
-  background-color: transparent !important;
-}
+.border-left-primary { border-left: 3px solid #ee7c2b !important; }
+.shadow-orange { box-shadow: 0 4px 14px 0 rgba(238, 124, 43, 0.39) !important; }
 </style>

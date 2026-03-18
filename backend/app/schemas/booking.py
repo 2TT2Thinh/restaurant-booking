@@ -32,8 +32,8 @@ class BookingRead(BookingBase):
     id: int
     status: str
     created_at: datetime
-    restaurant_id: int   
-    restaurant: RestaurantInBooking       # THÊM: trả về info nhà hàng thay vì tên string
+    restaurant_id: Optional[int] = None        # THÊM Optional
+    restaurant: Optional[RestaurantInBooking] = None  # THÊM Optional      # THÊM: trả về info nhà hàng thay vì tên string
 
     @computed_field
     @property

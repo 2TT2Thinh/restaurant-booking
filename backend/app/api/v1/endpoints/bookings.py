@@ -11,6 +11,15 @@ from app.api.deps import api_key_scheme
 
 router = APIRouter()
 
+@router.get("/stats")
+async def get_my_stats(
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user)
+):
+    """Thống kê booking cho trang Profile và Dashboard"""
+    return await crud_booking.get_booking_stats(db, user_id=current_user.id)
+
+    
 @router.get("/me", response_model=List[BookingRead])
 async def read_my_bookings(
    # Các tham số lọc (Query Parameters) - Mặc định là None (Lấy tất cả)

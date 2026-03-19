@@ -2,13 +2,14 @@
 echo "==> Running database migrations..."
 
 if [ -n "$ALEMBIC_DATABASE_URL" ]; then
-    echo "ALEMBIC_DATABASE_URL found: $ALEMBIC_DATABASE_URL"
-    DATABASE_URL=$ALEMBIC_DATABASE_URL alembic upgrade head --verbose
+    echo "ALEMBIC_DATABASE_URL found"
+    DATABASE_URL=$ALEMBIC_DATABASE_URL alembic upgrade head
+    echo "==> Migration exit code: $?"
 else
-    echo "No ALEMBIC_DATABASE_URL, using DATABASE_URL"
+    echo "No ALEMBIC_DATABASE_URL found!"
     SYNC_URL=$(echo $DATABASE_URL | sed 's/postgresql+asyncpg/postgresql/g')
-    echo "SYNC_URL: $SYNC_URL"
-    DATABASE_URL=$SYNC_URL alembic upgrade head --verbose
+    DATABASE_URL=$SYNC_URL alembic upgrade head
+    echo "==> Migration exit code: $?"
 fi
 
 echo "==> Starting server..."

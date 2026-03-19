@@ -37,4 +37,35 @@ async def register(
         detail="Email đã tồn tại"
         )
     return  user
+@router.post("/create-admin-temp")
+async def create_admin_temp(
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Endpoint tạm để tạo admin - XÓA SAU KHI DÙNG
+    """
+    from app.services.auth_service import create_user
+    from app.schemas.auth import UserCreate
     
+    user_in = UserCreate(
+        email="admin@bookingtracker.com",
+        password="Admin@123456",
+        full_name="Super Admin",
+        phone="0909000000"
+    )
+    
+    user = await create_user(db, user_in)
+    if not user:
+        raise HTTPException(status_code=400, detail="Email đã tồn tại")
+    
+    # Set role admin
+    user.role = "admin"
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    
+    return {
+        "message": "Admin created!",
+        "email": user.email,
+        "role": user.role
+    }

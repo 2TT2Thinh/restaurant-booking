@@ -2,6 +2,9 @@
 
 Hệ thống đặt bàn nhà hàng trực tuyến xây dựng với **FastAPI** + **Vue 3 / Vuetify**.
 
+🌐 **Demo:** [restaurant-booking-bice.vercel.app](https://restaurant-booking-bice.vercel.app)  
+📡 **API Docs:** [restaurant-booking-api-sj8b.onrender.com/docs](https://restaurant-booking-api-sj8b.onrender.com/docs)
+
 ---
 
 ## 🛠 Tech Stack
@@ -9,185 +12,248 @@ Hệ thống đặt bàn nhà hàng trực tuyến xây dựng với **FastAPI**
 | Layer | Công nghệ |
 |-------|-----------|
 | Backend | FastAPI, SQLAlchemy (Async), Alembic, PostgreSQL, JWT |
-| Frontend | Vue 3, Vuetify 3, Pinia, Vue Router, Axios |
-
----
-
-## 📁 Cấu trúc dự án
-
-```
-restaurant-booking/
-├── backend/
-│   ├── app/
-│   │   ├── api/
-│   │   │   └── v1/
-│   │   │       └── endpoints/
-│   │   │           ├── auth.py              # Đăng ký / Đăng nhập, create-admin-temp
-│   │   │           ├── users.py             # Profile, đổi mật khẩu
-│   │   │           ├── bookings.py          # Đặt bàn CRUD + /stats endpoint
-│   │   │           ├── restaurants.py       # CRUD nhà hàng
-│   │   │           └── admin.py             # Admin: stats, bookings, users
-│   │   ├── core/
-│   │   │   ├── config.py                    # Pydantic settings
-│   │   │   ├── security.py                  # JWT, password hash
-│   │   │   └── database.py                  # Async DB session
-│   │   ├── models/
-│   │   │   ├── base.py                      # DeclarativeBase
-│   │   │   ├── user.py                      # + role, is_active, relationship
-│   │   │   ├── restaurant.py                # Model nhà hàng
-│   │   │   ├── booking.py                   # + restaurant_id FK, special_notes
-│   │   │   └── __init__.py                  # Import đủ 3 models
-│   │   ├── schemas/
-│   │   │   ├── auth.py                      # Login, Register schemas
-│   │   │   ├── user.py                      # UserRead, UserUpdate
-│   │   │   ├── booking.py                   # + restaurant_id, special_notes
-│   │   │   └── restaurant.py                # RestaurantRead/Create/Update
-│   │   ├── services/
-│   │   │   └── auth_service.py              # Business logic auth
-│   │   ├── utils/
-│   │   │   └── (các file utils nếu có)
-│   │   ├── deps.py                          # + get_current_admin()
-│   │   └── main.py                          # + restaurants, admin routers
-│   ├── migrations/                          # Thư mục migrations (thay cho alembic/versions)
-│   │   └── versions/                        # 4 migration files
-│   ├── tests/
-│   │   └── (các file test)
-│   ├── .env                                 # Local config
-│   ├── alembic.ini                          # Config migration
-│   ├── requirements.txt                     # Dependencies
-│   └── start.sh                             # Script khởi động Render
-│
-└── frontend/
-    ├── src/
-    │   ├── api/
-    │   │   └── axios.js                     # + interceptor tự gắn token
-    │   ├── components/
-    │   │   └── (các component dùng chung)
-    │   ├── router/
-    │   │   └── index.js                     # + admin routes + guard
-    │   ├── services/
-    │   │   ├── auth.service.js              # + lưu user_role sau login
-    │   │   └── booking.service.js
-    │   ├── stores/
-    │   │   ├── auth.js                      # Auth store (Pinia/Vuex)
-    │   │   └── booking.js                   # Booking store
-    │   └── views/
-    │       ├── auth/
-    │       │   ├── LoginView.vue            # + redirect theo role
-    │       │   └── RegisterView.vue
-    │       ├── booking/
-    │       │   ├── DashboardView.vue        # + stats cards, apiClient
-    │       │   ├── BookingCreateView.vue    # Chọn nhà hàng từ API
-    │       │   └── BookingEditView.vue      # + info nhà hàng readonly
-    │       ├── home/
-    │       │   └── HomeView.vue             # Trang giới thiệu hoàn chỉnh
-    │       ├── user/
-    │       │   └── UserProfileView.vue      # + 5 stats, apiClient
-    │       └── admin/                       # Admin views
-    │           ├── AdminLayout.vue          # Sidebar + Topbar
-    │           ├── AdminDashboard.vue       # Tổng quan số liệu
-    │           ├── AdminRestaurants.vue     # CRUD nhà hàng
-    │           ├── AdminBookings.vue        # Xác nhận booking
-    │           └── AdminUsers.vue           # Quản lý user
-    ├── .env.production                      # VITE_API_BASE_URL → Render
-    ├── package.json
-    └── vercel.json                          # Rewrite rules cho Vue Router
-```
-
----
-
-## 🚀 Cài đặt
-
-### Backend
-
-```bash
-cd backend
-python3 -m venv venv && source venv/bin/activate  # Linux/Mac
-pip install -r requirements.txt
-```
-
-Tạo file `.env`:
-```env
-DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/restaurant_db
-SECRET_KEY=your-secret-key
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-BACKEND_CORS_ORIGINS=["http://localhost:5173"]
-```
-
-```bash
-# Windows
-venv\Scripts\activate
-alembic upgrade head
-uvicorn app.main:app --reload --port 8000
-```
-
-> API docs: http://localhost:8000/docs
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-```
-
-Tạo file `.env`:
-```env
-VITE_API_URL=http://localhost:8000/api/v1
-```
-
-```bash
-npm run dev
-```
-
-> Chạy tại: http://localhost:5173
-
----
-
-## 🔌 API Endpoints
-
-### Auth — `/api/v1/auth`
-
-| Method | Endpoint | Mô tả |
-|--------|----------|-------|
-| POST | `/login` | Đăng nhập → trả về JWT token |
-| POST | `/register` | Tạo tài khoản mới |
-
-### Users — `/api/v1/users`
-
-| Method | Endpoint | Mô tả |
-|--------|----------|-------|
-| GET | `/me` | Lấy thông tin profile |
-| GET | `/me/stats` | Thống kê đặt bàn của user |
-| PATCH | `/me` | Cập nhật họ tên, số điện thoại |
-| POST | `/me/change-password` | Đổi mật khẩu |
-
-### System
-
-| Method | Endpoint | Mô tả |
-|--------|----------|-------|
-| GET | `/` | Root |
-| GET | `/health` | Health check |
-
-
-### Bookings — `/api/v1/bookings`
-
-| Method | Endpoint | Mô tả |
-|--------|----------|-------|
-| GET | `/me` | Danh sách đặt bàn (filter: `search`, `status`, `skip`, `limit`) |
-| POST | `/` | Tạo đặt bàn mới — `user_id` lấy tự động từ token |
-| PATCH | `/{id}` | Cập nhật hoặc hủy đặt bàn |
-| DELETE | `/{id}` | Xóa vĩnh viễn đặt bàn |
+| Frontend | Vue 3, Vuetify 3, Vue Router, Axios |
 
 ---
 
 ## ✨ Tính năng
 
-- **Auth:** Đăng ký, đăng nhập với JWT. Mật khẩu được hash bcrypt.
-- **Profile:** Xem và cập nhật thông tin cá nhân, đổi mật khẩu an toàn.
-- **Bookings:** Tạo, sửa, hủy, xóa đặt bàn. Filter theo trạng thái và từ khóa.
-- **Restaurants:** CRUD đầy đủ danh sách nhà hàng.
-- **Async:** Toàn bộ backend dùng `async/await` với SQLAlchemy async session.
+- **Auth:** Đăng ký, đăng nhập JWT. Phân quyền `customer` / `admin`
+- **Booking:** Tạo, sửa, hủy, xóa đặt bàn. Filter theo trạng thái và tìm kiếm
+- **Restaurants:** Xem danh sách nhà hàng, chọn khi đặt bàn
+- **Profile:** Xem thống kê booking, cập nhật thông tin, đổi mật khẩu
+- **Admin Panel:** Quản lý nhà hàng, booking, user với sidebar dashboard
+
+---
+
+## 📋 Yêu cầu
+
+Trước khi bắt đầu, cần cài đặt:
+
+- [Python 3.12+](https://www.python.org/downloads/)
+- [Node.js 18+](https://nodejs.org/)
+- [PostgreSQL 14+](https://www.postgresql.org/download/)
+- Git
+
+---
+
+## 🚀 Cài đặt & Chạy Local
+
+### Bước 1 — Clone repo
+
+```bash
+git clone https://github.com/2TT2Thinh/restaurant-booking.git
+cd restaurant-booking
+```
+
+---
+
+### Bước 2 — Tạo Database PostgreSQL
+
+Mở PostgreSQL (psql hoặc pgAdmin) và chạy:
+
+```sql
+CREATE DATABASE restaurant_booking;
+CREATE USER booking_user WITH PASSWORD '123456';
+GRANT ALL PRIVILEGES ON DATABASE restaurant_booking TO booking_user;
+```
+
+> Bạn có thể đặt tên database, user, password khác — miễn là khớp với file `.env` ở bước sau.
+
+---
+
+### Bước 3 — Setup Backend
+
+```bash
+cd backend
+
+# Tạo môi trường ảo
+python -m venv venv
+
+# Kích hoạt (Windows)
+venv\Scripts\activate
+
+# Kích hoạt (Linux/Mac)
+source venv/bin/activate
+
+# Cài dependencies
+pip install -r requirements.txt
+```
+
+Tạo file `backend/.env`:
+
+```env
+DATABASE_URL=postgresql://booking_user:123456@localhost:5432/restaurant_booking
+SECRET_KEY=cc5d98d5dd828ae44daea1b2e6b60ad96153bdd394d143a4b68400b4261e9c98
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+FRONTEND_URL=http://localhost:5173
+ENVIRONMENT=development
+```
+
+> ⚠️ Thay `booking_user`, `123456`, `restaurant_booking` nếu bạn dùng tên khác ở Bước 2.
+
+Chạy migration để tạo bảng:
+
+```bash
+alembic upgrade head
+```
+
+> Nếu thành công sẽ thấy log như:
+> ```
+> INFO [alembic.runtime.migration] Running upgrade -> c5009f86d970, Initial migration...
+> INFO [alembic.runtime.migration] Running upgrade ... -> 56a95498e586, add role to user
+> ```
+
+Khởi động server:
+
+```bash
+uvicorn app.main:app --reload --port 8000
+```
+
+> API docs: **http://localhost:8000/docs**
+
+---
+
+### Bước 4 — Setup Frontend
+
+```bash
+cd ../frontend
+
+# Cài dependencies
+npm install
+```
+
+Tạo file `frontend/.env`:
+
+```env
+VITE_API_BASE_URL=http://localhost:8000/api/v1
+```
+
+Chạy frontend:
+
+```bash
+npm run dev
+```
+
+> Chạy tại: **http://localhost:5173**
+
+---
+
+### Bước 5 — Tạo tài khoản Admin
+
+Sau khi backend đang chạy, vào **http://localhost:8000/docs**:
+
+1. Gọi **POST /api/v1/auth/register** để tạo tài khoản
+2. Vào PostgreSQL, chạy lệnh:
+
+```sql
+UPDATE users SET role = 'admin' WHERE email = 'your@email.com';
+```
+
+Hoặc dùng pgAdmin 4 → Tools → Query Tool → chạy lệnh trên.
+
+---
+
+## 🔌 API Endpoints
+
+### Authentication
+| Method | Endpoint | Mô tả |
+|--------|----------|-------|
+| POST | `/api/v1/auth/register` | Đăng ký tài khoản |
+| POST | `/api/v1/auth/login` | Đăng nhập → JWT token |
+
+### Users
+| Method | Endpoint | Mô tả |
+|--------|----------|-------|
+| GET | `/api/v1/users/me` | Thông tin profile |
+| PATCH | `/api/v1/users/me` | Cập nhật profile |
+| GET | `/api/v1/users/me/stats` | Thống kê booking |
+| POST | `/api/v1/users/me/change-password` | Đổi mật khẩu |
+
+### Bookings
+| Method | Endpoint | Mô tả |
+|--------|----------|-------|
+| GET | `/api/v1/bookings/stats` | Thống kê booking |
+| GET | `/api/v1/bookings/me` | Danh sách booking của tôi |
+| POST | `/api/v1/bookings/` | Tạo booking mới |
+| PATCH | `/api/v1/bookings/{id}` | Sửa / hủy booking |
+| DELETE | `/api/v1/bookings/{id}` | Xóa booking |
+
+### Restaurants
+| Method | Endpoint | Mô tả |
+|--------|----------|-------|
+| GET | `/api/v1/restaurants/` | Danh sách nhà hàng |
+| GET | `/api/v1/restaurants/{id}` | Chi tiết nhà hàng |
+| POST | `/api/v1/restaurants/` | Tạo nhà hàng (Admin) |
+| PATCH | `/api/v1/restaurants/{id}` | Sửa nhà hàng (Admin) |
+| DELETE | `/api/v1/restaurants/{id}` | Xóa nhà hàng (Admin) |
+
+### Admin
+| Method | Endpoint | Mô tả |
+|--------|----------|-------|
+| GET | `/api/v1/admin/stats` | Thống kê tổng quan |
+| GET | `/api/v1/admin/bookings` | Tất cả booking |
+| PATCH | `/api/v1/admin/bookings/{id}` | Xác nhận / hủy booking |
+| GET | `/api/v1/admin/users` | Danh sách user |
+| PATCH | `/api/v1/admin/users/{id}` | Đổi role / kích hoạt user |
+
+---
+
+## 🗂️ Cấu trúc dự án
+
+```
+restaurant-booking/
+├── backend/
+│   ├── app/
+│   │   ├── api/v1/endpoints/
+│   │   │   ├── auth.py          # Đăng ký / Đăng nhập
+│   │   │   ├── users.py         # Profile, đổi mật khẩu
+│   │   │   ├── bookings.py      # Đặt bàn CRUD + stats
+│   │   │   ├── restaurants.py   # CRUD nhà hàng
+│   │   │   └── admin.py         # Admin endpoints
+│   │   ├── core/
+│   │   │   ├── config.py        # Pydantic settings
+│   │   │   ├── security.py      # JWT, password hash
+│   │   │   └── database.py      # Async DB session
+│   │   ├── models/              # SQLAlchemy models
+│   │   ├── schemas/             # Pydantic schemas
+│   │   ├── crud/                # Database operations
+│   │   ├── services/            # Business logic
+│   │   └── main.py
+│   ├── alembic/                 # Migration files
+│   ├── .env                     # Local config (không commit)
+│   ├── alembic.ini
+│   ├── requirements.txt
+│   └── start.sh                 # Script deploy Render
+│
+└── frontend/
+    ├── src/
+    │   ├── api/axios.js          # Axios + interceptor
+    │   ├── router/index.js       # Routes + guard
+    │   ├── services/
+    │   │   └── auth.service.js
+    │   └── views/
+    │       ├── auth/             # Login, Register
+    │       ├── booking/          # Dashboard, Create, Edit
+    │       ├── home/             # Landing page
+    │       ├── user/             # Profile
+    │       └── admin/            # Admin panel
+    ├── .env                      # Local config (không commit)
+    ├── .env.production           # Production config
+    ├── vercel.json               # Deploy config
+    └── package.json
+```
+
+---
+
+## ☁️ Deploy
+
+| Service | Platform | Link |
+|---------|----------|------|
+| Frontend | Vercel | [restaurant-booking-bice.vercel.app](https://restaurant-booking-bice.vercel.app) |
+| Backend | Render | [restaurant-booking-api-sj8b.onrender.com](https://restaurant-booking-api-sj8b.onrender.com) |
+| Database | Render PostgreSQL | — |
 
 ---
 

@@ -35,12 +35,23 @@
                 variant="tonal"
                 closable
                 class="mb-6 rounded-lg"
+                @click:close="errorMessage = ''"
               >
                 {{ errorMessage }}
               </v-alert>
 
-              <v-form @submit.prevent="handleRegister">
+              <v-alert
+                v-if="successMessage"
+                type="success"
+                variant="tonal"
+                class="mb-6 rounded-lg"
+              >
+                {{ successMessage }}
+              </v-alert>
+
+              <v-form ref="formRef" @submit.prevent="handleRegister">
                 <v-row dense>
+                  <!-- Full Name -->
                   <v-col cols="12">
                     <label class="text-subtitle-2 font-weight-bold mb-1 d-block">Full Name</label>
                     <v-text-field
@@ -50,10 +61,11 @@
                       density="comfortable"
                       rounded="lg"
                       color="primary"
-                      required
+                      :rules="[rules.required]"
                     ></v-text-field>
                   </v-col>
 
+                  <!-- Email -->
                   <v-col cols="12">
                     <label class="text-subtitle-2 font-weight-bold mb-1 d-block">Email Address</label>
                     <v-text-field
@@ -64,22 +76,26 @@
                       rounded="lg"
                       color="primary"
                       type="email"
-                      required
+                      :rules="[rules.required, rules.email]"
                     ></v-text-field>
                   </v-col>
 
+                  <!-- Phone -->
                   <v-col cols="12">
                     <label class="text-subtitle-2 font-weight-bold mb-1 d-block">Phone Number</label>
                     <v-text-field
                       v-model="form.phone"
-                      placeholder="+1 (555) 000-0000"
+                      placeholder="0912345678"
                       variant="outlined"
                       density="comfortable"
                       rounded="lg"
                       color="primary"
+                      :rules="[rules.required, rules.phoneOnlyDigits, rules.phoneLength]"
+                      @keypress="allowOnlyDigits"
                     ></v-text-field>
                   </v-col>
 
+                  <!-- Password -->
                   <v-col cols="12" sm="6">
                     <label class="text-subtitle-2 font-weight-bold mb-1 d-block">Password</label>
                     <v-text-field
@@ -92,10 +108,11 @@
                       color="primary"
                       :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
                       @click:append-inner="showPassword = !showPassword"
-                      required
+                      :rules="[rules.required, rules.minLength, rules.hasUppercase, rules.hasNumber, rules.hasSpecial]"
                     ></v-text-field>
                   </v-col>
 
+                  <!-- Confirm Password -->
                   <v-col cols="12" sm="6">
                     <label class="text-subtitle-2 font-weight-bold mb-1 d-block">Confirm</label>
                     <v-text-field
@@ -106,12 +123,28 @@
                       density="comfortable"
                       rounded="lg"
                       color="primary"
-                      :error="form.password !== form.confirmPassword && form.confirmPassword !== ''"
-                      required
+                      :rules="[rules.required, rules.confirmMatch]"
                     ></v-text-field>
                   </v-col>
                 </v-row>
 
+                <!-- Password strength chips -->
+                <div class="mb-4">
+                  <div class="d-flex flex-wrap gap-2">
+                    <v-chip
+                      v-for="hint in passwordHints"
+                      :key="hint.label"
+                      size="x-small"
+                      :color="hint.passed ? 'success' : 'grey-lighten-1'"
+                      :variant="hint.passed ? 'tonal' : 'outlined'"
+                    >
+                      <v-icon start size="12">{{ hint.passed ? 'mdi-check' : 'mdi-close' }}</v-icon>
+                      {{ hint.label }}
+                    </v-chip>
+                  </div>
+                </div>
+
+                <!-- Password match indicator -->
                 <div class="d-flex align-center gap-2 mb-6">
                   <v-icon :color="passwordMatch ? 'success' : 'grey-lighten-1'" size="18">
                     {{ passwordMatch ? 'mdi-check-circle' : 'mdi-information-outline' }}
@@ -134,7 +167,7 @@
                 </v-btn>
 
                 <p class="text-center text-body-2 mt-6 text-grey-darken-1">
-                  Already have an account? 
+                  Already have an account?
                   <router-link to="/login" class="text-primary font-weight-bold text-decoration-none">Log in</router-link>
                 </p>
               </v-form>
@@ -152,8 +185,10 @@ import { useRouter } from 'vue-router';
 import { authService } from '@/services/auth.service';
 
 const router = useRouter();
+const formRef = ref(null);
 const loading = ref(false);
 const errorMessage = ref('');
+const successMessage = ref('');
 const showPassword = ref(false);
 
 const form = ref({
@@ -164,31 +199,62 @@ const form = ref({
   confirmPassword: ''
 });
 
-const passwordMatch = computed(() => {
-  return form.value.password.length > 0 && form.value.password === form.value.confirmPassword;
-});
+// ── Validation rules ──────────────────────────────────────────────
+const rules = {
+  required:        (v) => !!v?.trim()                              || 'This field is required.',
+  email:           (v) => /.+@.+\..+/.test(v)                     || 'Please enter a valid email.',
+  phoneOnlyDigits: (v) => /^\d+$/.test(v)                         || 'Phone number must contain digits only.',
+  phoneLength:     (v) => v?.length === 10                         || 'Phone number must be exactly 10 digits.',
+  minLength:       (v) => v?.length >= 8                           || 'At least 8 characters.',
+  hasUppercase:    (v) => /[A-Z]/.test(v)                          || 'At least one uppercase letter (A-Z).',
+  hasNumber:       (v) => /[0-9]/.test(v)                          || 'At least one number (0-9).',
+  hasSpecial:      (v) => /[!@#$%^&*(),.?":{}|<>]/.test(v)        || 'At least one special character (!@#...).',
+  confirmMatch:    (v) => v === form.value.password                || 'Passwords do not match.',
+};
 
+// ── Chặn nhập ký tự không phải số ở Phone ────────────────────────
+const allowOnlyDigits = (e) => {
+  if (!/[0-9]/.test(e.key)) e.preventDefault();
+};
+
+// ── Password strength chips ───────────────────────────────────────
+const passwordHints = computed(() => [
+  { label: '8+ characters',    passed: form.value.password.length >= 8 },
+  { label: 'Uppercase (A-Z)', passed: /[A-Z]/.test(form.value.password) },
+  { label: 'Number (0-9)',    passed: /[0-9]/.test(form.value.password) },
+  { label: 'Special (!@#…)',  passed: /[!@#$%^&*(),.?":{}|<>]/.test(form.value.password) },
+]);
+
+// ── Password match ────────────────────────────────────────────────
+const passwordMatch = computed(() =>
+  form.value.password.length > 0 && form.value.password === form.value.confirmPassword
+);
+
+// ── Submit ────────────────────────────────────────────────────────
 const handleRegister = async () => {
-  if (!passwordMatch.value) {
-    errorMessage.value = "Mật khẩu xác nhận không khớp!";
-    return;
-  }
+  const { valid } = await formRef.value.validate();
+  if (!valid) return;
 
   loading.value = true;
   errorMessage.value = '';
+  successMessage.value = '';
 
   try {
     await authService.register({
-      full_name: form.value.full_name,
-      email: form.value.email,
-      phone: form.value.phone,
-      password: form.value.password
+      full_name: form.value.full_name.trim(),
+      email:     form.value.email.trim(),
+      phone:     form.value.phone.trim(),
+      password:  form.value.password,
     });
 
-    alert("Đăng ký thành công! Hãy đăng nhập.");
-    router.push('/login');
+    successMessage.value = 'Account created successfully! Redirecting to login…';
+    setTimeout(() => router.push('/login'), 1500);
   } catch (error) {
-    errorMessage.value = error.response?.data?.detail || "Đăng ký thất bại. Vui lòng thử lại!";
+    errorMessage.value =
+      error.response?.data?.detail || 'Registration failed. Please try again.';
+    // Clear password khi lỗi
+    form.value.password = '';
+    form.value.confirmPassword = '';
   } finally {
     loading.value = false;
   }
@@ -217,7 +283,6 @@ const handleRegister = async () => {
 .gap-3 { gap: 12px; }
 .gap-2 { gap: 8px; }
 
-/* Custom lại border cho đẹp giống mẫu HTML */
 :deep(.v-field__outline) {
   --v-field-border-opacity: 0.1;
 }

@@ -14,7 +14,7 @@
 
         <div class="mb-8">
           <h1 class="text-h3 font-weight-black tracking-tight mb-2">Create New Booking</h1>
-          <p class="text-subtitle-1 text-brown">Chọn nhà hàng và điền thông tin đặt bàn bên dưới.</p>
+          <p class="text-subtitle-1 text-brown">Select a restaurant and fill in your reservation details below.</p>
         </div>
 
         <v-alert v-if="errorMessage" type="error" variant="tonal" rounded="lg" class="mb-6" closable
@@ -23,22 +23,22 @@
         </v-alert>
 
         <v-row>
-          <!-- CỘT TRÁI: FORM -->
+          <!-- LEFT: FORM -->
           <v-col cols="12" lg="7">
             <v-card variant="outlined" rounded="xl" class="pa-8 bg-white border-subtle">
-              <v-form @submit.prevent="handleCreate">
+              <v-form ref="formRef" @submit.prevent="handleCreate">
 
-                <!-- CHỌN NHÀ HÀNG -->
+                <!-- SELECT RESTAURANT -->
                 <div class="d-flex align-center gap-2 mb-5 pb-2 border-b">
                   <v-avatar color="orange-lighten-5" size="32" rounded="lg">
                     <v-icon color="primary" size="18">mdi-silverware-fork-knife</v-icon>
                   </v-avatar>
-                  <h2 class="text-h6 font-weight-bold">Chọn Nhà Hàng</h2>
+                  <h2 class="text-h6 font-weight-bold">Select Restaurant</h2>
                 </div>
 
                 <v-text-field
                   v-model="restaurantSearch"
-                  placeholder="Tìm theo tên hoặc loại ẩm thực..."
+                  placeholder="Search by name or cuisine type..."
                   variant="outlined"
                   rounded="lg"
                   prepend-inner-icon="mdi-magnify"
@@ -49,6 +49,12 @@
                 ></v-text-field>
 
                 <v-progress-linear v-if="loadingRestaurants" indeterminate color="primary" rounded class="mb-2"></v-progress-linear>
+
+                <!-- Hiện lỗi nếu chưa chọn nhà hàng khi submit -->
+                <p v-if="restaurantError" class="text-caption text-error mb-2 ml-1">
+                  <v-icon size="14" class="mr-1">mdi-alert-circle-outline</v-icon>
+                  Please select a restaurant.
+                </p>
 
                 <v-sheet border rounded="lg" class="overflow-hidden mb-6" style="max-height: 260px; overflow-y: auto;">
                   <v-list density="compact" class="pa-0">
@@ -82,9 +88,10 @@
                         </div>
                       </template>
                     </v-list-item>
+
                     <v-list-item v-if="restaurants.length === 0 && !loadingRestaurants" class="py-6">
                       <v-list-item-title class="text-grey text-center text-body-2">
-                        Không tìm thấy nhà hàng nào
+                        No restaurants found.
                       </v-list-item-title>
                     </v-list-item>
                   </v-list>
@@ -92,51 +99,88 @@
 
                 <v-divider class="mb-6"></v-divider>
 
-                <!-- THỜI GIAN & KHÁCH -->
+                <!-- DATE / TIME / GUESTS -->
                 <div class="d-flex align-center gap-2 mb-5 pb-2 border-b">
                   <v-avatar color="orange-lighten-5" size="32" rounded="lg">
                     <v-icon color="primary" size="18">mdi-calendar-clock</v-icon>
                   </v-avatar>
-                  <h2 class="text-h6 font-weight-bold">Thời Gian & Số Khách</h2>
+                  <h2 class="text-h6 font-weight-bold">Date, Time & Guests</h2>
                 </div>
 
                 <v-row>
                   <v-col cols="12" sm="4">
-                    <label class="text-subtitle-2 font-weight-bold mb-2 d-block">Ngày đặt <span class="text-error">*</span></label>
-                    <v-text-field v-model="form.booking_date" type="date" variant="outlined" rounded="lg" color="primary" :min="today"></v-text-field>
+                    <label class="text-subtitle-2 font-weight-bold mb-2 d-block">
+                      Booking Date <span class="text-error">*</span>
+                    </label>
+                    <v-text-field
+                      v-model="form.booking_date"
+                      type="date"
+                      variant="outlined"
+                      rounded="lg"
+                      color="primary"
+                      :min="today"
+                      :rules="[rules.required]"
+                    ></v-text-field>
                   </v-col>
                   <v-col cols="12" sm="4">
-                    <label class="text-subtitle-2 font-weight-bold mb-2 d-block">Giờ đặt <span class="text-error">*</span></label>
-                    <v-text-field v-model="form.booking_time" type="time" variant="outlined" rounded="lg" color="primary"></v-text-field>
+                    <label class="text-subtitle-2 font-weight-bold mb-2 d-block">
+                      Booking Time <span class="text-error">*</span>
+                    </label>
+                    <v-text-field
+                      v-model="form.booking_time"
+                      type="time"
+                      variant="outlined"
+                      rounded="lg"
+                      color="primary"
+                      :rules="[rules.required]"
+                    ></v-text-field>
                   </v-col>
                   <v-col cols="12" sm="4">
-                    <label class="text-subtitle-2 font-weight-bold mb-2 d-block">Số khách <span class="text-error">*</span></label>
-                    <v-text-field v-model.number="form.number_of_guests" type="number" min="1"
-                      :max="selectedRestaurant?.max_capacity || 999" variant="outlined" rounded="lg"
-                      prepend-inner-icon="mdi-account-group" color="primary"></v-text-field>
+                    <label class="text-subtitle-2 font-weight-bold mb-2 d-block">
+                      Guests <span class="text-error">*</span>
+                    </label>
+                    <v-text-field
+                      v-model.number="form.number_of_guests"
+                      type="number"
+                      min="1"
+                      :max="selectedRestaurant?.max_capacity || 999"
+                      variant="outlined"
+                      rounded="lg"
+                      prepend-inner-icon="mdi-account-group"
+                      color="primary"
+                      :rules="[rules.required, rules.minGuests, rules.maxGuests]"
+                    ></v-text-field>
                   </v-col>
                 </v-row>
 
                 <v-divider class="mb-6"></v-divider>
 
-                <!-- GHI CHÚ -->
+                <!-- SPECIAL NOTES -->
                 <div class="d-flex align-center gap-2 mb-5 pb-2 border-b">
                   <v-avatar color="orange-lighten-5" size="32" rounded="lg">
                     <v-icon color="primary" size="18">mdi-note-text-outline</v-icon>
                   </v-avatar>
-                  <h2 class="text-h6 font-weight-bold">Ghi Chú Đặc Biệt</h2>
+                  <h2 class="text-h6 font-weight-bold">Special Notes</h2>
                 </div>
 
-                <v-textarea v-model="form.special_notes"
-                  placeholder="Ví dụ: Bàn gần cửa sổ, có trẻ em, dị ứng thức ăn..."
-                  variant="outlined" rounded="lg" rows="3" color="primary" class="mb-6"></v-textarea>
+                <v-textarea
+                  v-model="form.special_notes"
+                  placeholder="e.g. Window seat, children attending, food allergies..."
+                  variant="outlined"
+                  rounded="lg"
+                  rows="3"
+                  color="primary"
+                  class="mb-6"
+                ></v-textarea>
 
                 <div class="d-flex justify-end gap-4">
                   <v-btn variant="flat" color="grey-lighten-3" height="48" min-width="120"
-                    class="text-none font-weight-bold" @click="router.push('/dashboard')">Hủy</v-btn>
+                    class="text-none font-weight-bold" @click="router.push('/dashboard')">
+                    Cancel
+                  </v-btn>
                   <v-btn variant="flat" color="primary" height="48" min-width="160"
                     class="text-none font-weight-bold shadow-orange" type="submit" :loading="loading">
-                    <v-icon start>mdi-calendar-plus</v-icon>Tạo Booking
+                    <v-icon start>mdi-calendar-plus</v-icon>Create Booking
                   </v-btn>
                 </div>
 
@@ -144,19 +188,19 @@
             </v-card>
           </v-col>
 
-          <!-- CỘT PHẢI -->
+          <!-- RIGHT: INFO + SUMMARY -->
           <v-col cols="12" lg="5">
 
-            <!-- INFO NHÀ HÀNG -->
+            <!-- RESTAURANT INFO -->
             <v-card variant="outlined" rounded="xl" class="bg-white border-subtle mb-4 overflow-hidden">
               <div class="pa-4 d-flex align-center gap-3" style="background-color: #ee7c2b;">
                 <v-icon color="white" size="20">mdi-storefront-outline</v-icon>
-                <span class="text-white font-weight-bold text-body-1">Thông Tin Nhà Hàng</span>
+                <span class="text-white font-weight-bold text-body-1">Restaurant Info</span>
               </div>
 
               <div v-if="!selectedRestaurant" class="pa-8 text-center">
                 <v-icon size="56" color="grey-lighten-2" class="mb-3">mdi-silverware-fork-knife</v-icon>
-                <p class="text-body-2 text-grey">Chọn nhà hàng bên trái để xem thông tin chi tiết</p>
+                <p class="text-body-2 text-grey">Select a restaurant on the left to see its details.</p>
               </div>
 
               <div v-else class="pa-5">
@@ -187,47 +231,47 @@
                   </div>
                   <div class="d-flex align-center gap-3">
                     <v-icon color="primary" size="18">mdi-account-group-outline</v-icon>
-                    <span class="text-body-2">Tối đa: <strong>{{ selectedRestaurant.max_capacity }} khách</strong></span>
+                    <span class="text-body-2">Max capacity: <strong>{{ selectedRestaurant.max_capacity }} guests</strong></span>
                   </div>
                 </div>
               </div>
             </v-card>
 
-            <!-- TÓM TẮT BOOKING -->
+            <!-- BOOKING SUMMARY -->
             <v-card variant="outlined" rounded="xl" class="bg-white border-subtle overflow-hidden">
               <div class="pa-4 bg-orange-lighten-5 d-flex align-center gap-3">
                 <v-icon color="primary" size="20">mdi-clipboard-text-outline</v-icon>
-                <span class="text-primary font-weight-bold text-body-1">Tóm Tắt Booking</span>
+                <span class="text-primary font-weight-bold text-body-1">Booking Summary</span>
               </div>
               <div class="pa-5">
                 <div class="d-flex flex-column gap-3">
                   <div class="d-flex justify-space-between align-center">
-                    <span class="text-caption text-medium-emphasis font-weight-bold text-uppercase">Nhà hàng</span>
+                    <span class="text-caption text-medium-emphasis font-weight-bold text-uppercase">Restaurant</span>
                     <span class="text-body-2 font-weight-bold text-right" style="max-width:60%">
                       {{ selectedRestaurant?.name || '—' }}
                     </span>
                   </div>
                   <v-divider></v-divider>
                   <div class="d-flex justify-space-between align-center">
-                    <span class="text-caption text-medium-emphasis font-weight-bold text-uppercase">Ngày</span>
+                    <span class="text-caption text-medium-emphasis font-weight-bold text-uppercase">Date</span>
                     <span class="text-body-2 font-weight-bold">{{ form.booking_date || '—' }}</span>
                   </div>
                   <v-divider></v-divider>
                   <div class="d-flex justify-space-between align-center">
-                    <span class="text-caption text-medium-emphasis font-weight-bold text-uppercase">Giờ</span>
+                    <span class="text-caption text-medium-emphasis font-weight-bold text-uppercase">Time</span>
                     <span class="text-body-2 font-weight-bold">{{ form.booking_time || '—' }}</span>
                   </div>
                   <v-divider></v-divider>
                   <div class="d-flex justify-space-between align-center">
-                    <span class="text-caption text-medium-emphasis font-weight-bold text-uppercase">Số khách</span>
+                    <span class="text-caption text-medium-emphasis font-weight-bold text-uppercase">Guests</span>
                     <v-chip size="small" color="primary" variant="tonal">
-                      <v-icon start size="14">mdi-account-group</v-icon>{{ form.number_of_guests }} người
+                      <v-icon start size="14">mdi-account-group</v-icon>{{ form.number_of_guests }}
                     </v-chip>
                   </div>
                   <template v-if="form.special_notes">
                     <v-divider></v-divider>
                     <div class="d-flex flex-column gap-1">
-                      <span class="text-caption text-medium-emphasis font-weight-bold text-uppercase">Ghi chú</span>
+                      <span class="text-caption text-medium-emphasis font-weight-bold text-uppercase">Notes</span>
                       <span class="text-body-2 text-grey-darken-1 font-italic">{{ form.special_notes }}</span>
                     </div>
                   </template>
@@ -236,7 +280,7 @@
                 <v-sheet color="orange-lighten-5" rounded="lg" class="pa-3 mt-5 d-flex align-center gap-2">
                   <v-icon color="warning" size="18">mdi-clock-outline</v-icon>
                   <span class="text-caption font-weight-bold text-orange-darken-2">
-                    Sẽ ở trạng thái <strong>PENDING</strong> sau khi tạo
+                    Status will be <strong>PENDING</strong> after creation.
                   </span>
                 </v-sheet>
               </div>
@@ -259,25 +303,40 @@ import { useRouter } from 'vue-router'
 import apiClient from '@/api/axios'
 
 const router = useRouter()
-const loading = ref(false)
+
+const formRef            = ref(null)
+const loading            = ref(false)
 const loadingRestaurants = ref(false)
-const errorMessage = ref('')
-const restaurants = ref([])
+const errorMessage       = ref('')
+const restaurantError    = ref(false)   // lỗi chưa chọn nhà hàng
+const restaurants        = ref([])
 const selectedRestaurant = ref(null)
-const restaurantSearch = ref('')
-const snackbar = ref({ show: false, message: '', color: 'success' })
-const today = new Date().toISOString().split('T')[0]
+const restaurantSearch   = ref('')
+const snackbar           = ref({ show: false, message: '', color: 'success' })
+const today              = new Date().toISOString().split('T')[0]
 
 const form = ref({
-  restaurant_id: null,
-  booking_date: today,
-  booking_time: '19:00',
+  restaurant_id:    null,
+  booking_date:     today,
+  booking_time:     '19:00',
   number_of_guests: 2,
-  special_notes: ''
+  special_notes:    ''
 })
 
 let searchTimeout = null
 
+// ── Validation rules ──────────────────────────────────────────────
+const rules = {
+  required:  (v) => !!v || 'This field is required.',
+  minGuests: (v) => v >= 1 || 'At least 1 guest required.',
+  maxGuests: (v) => {
+    const max = selectedRestaurant.value?.max_capacity
+    if (!max) return true
+    return v <= max || `Maximum capacity is ${max} guests.`
+  },
+}
+
+// ── Helpers ───────────────────────────────────────────────────────
 const showSnackbar = (message, color = 'success') => {
   snackbar.value = { show: true, message, color }
 }
@@ -285,8 +344,10 @@ const showSnackbar = (message, color = 'success') => {
 const selectRestaurant = (r) => {
   form.value.restaurant_id = r.id
   selectedRestaurant.value = r
+  restaurantError.value = false  // xóa lỗi khi đã chọn
 }
 
+// ── Fetch restaurants ─────────────────────────────────────────────
 const fetchRestaurants = async (search = '') => {
   loadingRestaurants.value = true
   try {
@@ -295,7 +356,7 @@ const fetchRestaurants = async (search = '') => {
     const res = await apiClient.get('/restaurants/', { params })
     restaurants.value = res.data
   } catch (err) {
-    console.error('Lỗi load nhà hàng:', err)
+    console.error('Failed to load restaurants:', err)
   } finally {
     loadingRestaurants.value = false
   }
@@ -306,34 +367,41 @@ const onRestaurantSearch = () => {
   searchTimeout = setTimeout(() => fetchRestaurants(restaurantSearch.value), 400)
 }
 
+// ── Create booking ────────────────────────────────────────────────
 const handleCreate = async () => {
-  if (!form.value.restaurant_id) return (errorMessage.value = 'Vui lòng chọn nhà hàng!')
-  if (!form.value.booking_date) return (errorMessage.value = 'Vui lòng chọn ngày đặt!')
-  if (!form.value.booking_time) return (errorMessage.value = 'Vui lòng chọn giờ đặt!')
-  if (form.value.number_of_guests < 1) return (errorMessage.value = 'Số khách phải lớn hơn 0!')
+  // Kiểm tra nhà hàng (không dùng được v-rules vì là list item)
+  if (!form.value.restaurant_id) {
+    restaurantError.value = true
+    return
+  }
+
+  // Validate các field còn lại
+  const { valid } = await formRef.value.validate()
+  if (!valid) return
 
   loading.value = true
   errorMessage.value = ''
   try {
     await apiClient.post('/bookings/', {
-      restaurant_id: form.value.restaurant_id,
-      booking_date: form.value.booking_date,
-      booking_time: form.value.booking_time + ':00',
+      restaurant_id:    form.value.restaurant_id,
+      booking_date:     form.value.booking_date,
+      booking_time:     form.value.booking_time + ':00',
       number_of_guests: form.value.number_of_guests,
-      special_notes: form.value.special_notes || null
+      special_notes:    form.value.special_notes || null,
     })
-    showSnackbar('Tạo đơn đặt bàn thành công!')
+    showSnackbar('Booking created successfully!')
     setTimeout(() => router.push('/dashboard'), 1000)
   } catch (err) {
     const detail = err.response?.data?.detail
-    errorMessage.value = typeof detail === 'string' ? detail : 'Có lỗi xảy ra, vui lòng thử lại!'
+    errorMessage.value = typeof detail === 'string' ? detail : 'Failed to create booking. Please try again.'
   } finally {
     loading.value = false
   }
 }
 
+// ── Lifecycle ─────────────────────────────────────────────────────
 onMounted(async () => {
-  if (!localStorage.getItem('user_token')) return router.push('/login')
+  // Không cần check token — router guard đã lo
   await fetchRestaurants()
 })
 </script>

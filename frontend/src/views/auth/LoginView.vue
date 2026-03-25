@@ -2,13 +2,7 @@
   <v-app class="bg-background-light">
     <v-app-bar flat border class="px-md-10 px-4" color="surface">
       <div class="d-flex align-center gap-3">
-        <v-sheet
-          width="32"
-          height="32"
-          color="primary"
-          rounded="lg"
-          class="d-flex align-center justify-center"
-        >
+        <v-sheet width="32" height="32" color="primary" rounded="lg" class="d-flex align-center justify-center">
           <v-icon color="white" size="20">mdi-calendar-check</v-icon>
         </v-sheet>
         <v-app-bar-title class="text-h6 font-weight-bold tracking-tight">
@@ -16,12 +10,7 @@
         </v-app-bar-title>
       </div>
       <v-spacer></v-spacer>
-      <v-btn
-        variant="flat"
-        color="grey-lighten-4"
-        class="text-none font-weight-bold text-grey-darken-3"
-        rounded="lg"
-      >
+      <v-btn variant="flat" color="grey-lighten-4" class="text-none font-weight-bold text-grey-darken-3" rounded="lg">
         Help
       </v-btn>
     </v-app-bar>
@@ -41,7 +30,21 @@
                 </p>
               </div>
 
-              <v-form @submit.prevent="handleLogin">
+              <!-- ALERT LỖI -->
+              <v-alert
+                v-if="errorMessage"
+                type="error"
+                variant="tonal"
+                rounded="lg"
+                density="compact"
+                class="mb-4"
+                closable
+                @click:close="errorMessage = ''"
+              >
+                {{ errorMessage }}
+              </v-alert>
+
+              <v-form ref="formRef" @submit.prevent="handleLogin">
                 <label class="text-subtitle-2 font-weight-bold d-block mb-2">Email</label>
                 <v-text-field
                   v-model="email"
@@ -52,6 +55,7 @@
                   rounded="lg"
                   color="primary"
                   class="mb-2"
+                  :rules="[rules.required, rules.email]"
                 ></v-text-field>
 
                 <div class="d-flex justify-space-between align-center mb-2">
@@ -66,9 +70,12 @@
                   variant="outlined"
                   density="comfortable"
                   prepend-inner-icon="mdi-key-outline"
-                  type="password"
+                  :type="showPassword ? 'text' : 'password'"
+                  :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
+                  @click:append-inner="showPassword = !showPassword"
                   rounded="lg"
                   color="primary"
+                  :rules="[rules.required]"
                 ></v-text-field>
 
                 <v-checkbox
@@ -88,6 +95,7 @@
                   elevation="2"
                   class="mt-6 text-none font-weight-bold shadow-primary"
                   type="submit"
+                  :loading="loading"
                 >
                   Login
                 </v-btn>
@@ -96,20 +104,15 @@
               <div class="mt-8 pt-6 border-t text-center">
                 <p class="text-body-2 text-medium-emphasis">
                   Don't have an account?
-                  <router-link 
-                              to="/register" 
-                              class="text-primary font-weight-bold text-decoration-none ml-1"
-                            >
-                              Register Now
-                            </router-link>
+                  <router-link to="/register" class="text-primary font-weight-bold text-decoration-none ml-1">
+                    Register Now
+                  </router-link>
                 </p>
               </div>
 
               <div class="mt-6 d-flex align-center gap-4">
                 <v-divider></v-divider>
-                <span class="text-overline text-grey-lighten-1" style="white-space: nowrap">
-                  Secure Entry
-                </span>
+                <span class="text-overline text-grey-lighten-1" style="white-space: nowrap">Secure Entry</span>
                 <v-divider></v-divider>
               </div>
             </v-card>
@@ -125,65 +128,74 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { authService } from '@/services/auth.service';
-import { useRouter } from 'vue-router';
-const email = ref('');
-const password = ref('');
-const rememberMe = ref(false);
-const router = useRouter();
-const errorMessage = ref('');
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
+const router    = useRouter()
+const authStore = useAuthStore()
+
+const formRef     = ref(null)
+const email       = ref('')
+const password    = ref('')
+const rememberMe  = ref(false)
+const showPassword = ref(false)
+const loading     = ref(false)
+const errorMessage = ref('')
+
+// ── Validation rules ──────────────────────────────────────────────
+const rules = {
+  required: (v) => !!v?.trim() || 'This field is required.',
+  email:    (v) => /.+@.+\..+/.test(v) || 'Please enter a valid email.',
+}
+
+// ── Login handler ─────────────────────────────────────────────────
 const handleLogin = async () => {
+  // Validate form trước
+  const { valid } = await formRef.value.validate()
+  if (!valid) return
+
+  errorMessage.value = ''
+  loading.value = true
+
   try {
-    await authService.login(email.value, password.value);
-    
-    // Redirect theo role
-    const role = localStorage.getItem('user_role');
-    if (role === 'admin') {
-      router.push('/admin');
-    } else {
-      router.push('/dashboard');
-    }
+    // Gọi Store action thay vì authService trực tiếp
+    await authStore.login(email.value.trim(), password.value)
+
+    // Redirect dựa vào role từ Store (không đọc localStorage)
+    router.push(authStore.isAdmin ? '/admin' : '/dashboard')
+
   } catch (error) {
-    errorMessage.value = "Sai email hoặc mật khẩu rồi bạn ơi!";
-    console.error(error);
+    const status = error.response?.status
+    const detail = error.response?.data?.detail
+
+    if (status === 401) {
+      errorMessage.value = 'Incorrect email or password.'
+    } else if (status === 400) {
+      errorMessage.value = typeof detail === 'string' ? detail : 'Invalid login credentials.'
+    } else if (!error.response) {
+      errorMessage.value = 'Cannot connect to server. Please try again.'
+    } else {
+      errorMessage.value = 'Something went wrong. Please try again.'
+    }
+
+    // Clear password khi sai
+    password.value = ''
+
+  } finally {
+    loading.value = false
   }
-};
+}
 </script>
 
 <style scoped>
-/* Custom spacing and typography to match the exact StichAI spec */
-.bg-background-light {
-  background-color: #f8f7f6 !important;
-}
-
-.login-card {
-  background-color: #ffffff !important;
-  border-color: #f3f4f6 !important;
-}
-
-.max-width-card {
-  max-width: 440px !important;
-}
-
+.bg-background-light { background-color: #f8f7f6 !important; }
+.login-card { background-color: #ffffff !important; border-color: #f3f4f6 !important; }
+.max-width-card { max-width: 440px !important; }
 .gap-3 { gap: 12px; }
 .gap-4 { gap: 16px; }
-
-.shadow-primary {
-  box-shadow: 0 4px 14px 0 rgba(238, 124, 43, 0.3) !important;
-}
-
-/* Tracking adjustment to match 'Work Sans' feel */
-.tracking-tight {
-  letter-spacing: -0.015em !important;
-}
-
-:deep(.v-field__outline) {
-  --v-field-border-opacity: 0.12;
-}
-
-:deep(.v-label) {
-  font-size: 0.875rem;
-}
+.shadow-primary { box-shadow: 0 4px 14px 0 rgba(238, 124, 43, 0.3) !important; }
+.tracking-tight { letter-spacing: -0.015em !important; }
+:deep(.v-field__outline) { --v-field-border-opacity: 0.12; }
+:deep(.v-label) { font-size: 0.875rem; }
 </style>

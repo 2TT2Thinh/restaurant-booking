@@ -13,7 +13,10 @@
             <div>
               <h1 class="text-h4 font-weight-bold tracking-tight">My Bookings</h1>
               <p class="text-body-2 text-medium-emphasis">
-                Welcome back, <span class="font-weight-bold text-primary">{{ userEmail }}</span>
+                Welcome back,
+                <span class="font-weight-bold text-primary">
+                  {{ authStore.user?.full_name || authStore.user?.email || 'User' }}
+                </span>
               </p>
             </div>
           </div>
@@ -32,15 +35,19 @@
                 <v-btn icon v-bind="props" variant="text">
                   <v-avatar color="primary" size="44" class="elevation-2">
                     <span class="text-white text-h6 font-weight-bold">
-                      {{ userEmail ? userEmail.charAt(0).toUpperCase() : 'U' }}
+                      {{ avatarLetter }}
                     </span>
                   </v-avatar>
                 </v-btn>
               </template>
               <v-card class="mt-2">
                 <v-list class="pa-2">
-                  <v-list-item prepend-icon="mdi-account-circle-outline" :title="userEmail" subtitle="Logged in"
-                    class="mb-2"></v-list-item>
+                  <v-list-item
+                    prepend-icon="mdi-account-circle-outline"
+                    :title="authStore.user?.full_name || authStore.user?.email"
+                    subtitle="Logged in"
+                    class="mb-2"
+                  ></v-list-item>
                   <v-divider class="mb-2"></v-divider>
                   <v-list-item link prepend-icon="mdi-badge-account-outline" title="My Profile"
                     @click="router.push('/profile')"></v-list-item>
@@ -135,14 +142,12 @@
               </tr>
             </thead>
             <tbody>
-              <!-- LOADING -->
               <tr v-if="loading">
                 <td colspan="6" class="text-center py-6">
                   <v-progress-circular indeterminate color="primary" size="32"></v-progress-circular>
                 </td>
               </tr>
 
-              <!-- DATA ROWS -->
               <tr v-else v-for="booking in bookings" :key="booking.id">
                 <td class="font-weight-bold">{{ booking.restaurant?.name || '—' }}</td>
                 <td class="text-body-2 text-medium-emphasis">{{ booking.restaurant?.address || '—' }}</td>
@@ -169,11 +174,10 @@
                   <v-btn icon="mdi-pencil-outline" variant="text" size="small" color="grey"
                     @click="router.push(`/bookings/edit/${booking.id}`)"></v-btn>
                   <v-btn icon="mdi-delete-outline" variant="text" size="small" color="red-lighten-1"
-                    @click="handleDelete(booking.id)"></v-btn>
+                    @click="confirmDelete(booking.id)"></v-btn>
                 </td>
               </tr>
 
-              <!-- EMPTY -->
               <tr v-if="!loading && bookings.length === 0">
                 <td colspan="6" class="text-center py-8 text-grey">
                   <v-icon size="48" color="grey-lighten-2" class="mb-2">mdi-calendar-blank</v-icon>
@@ -191,7 +195,31 @@
       </v-col>
     </v-row>
 
-    <!-- SNACKBAR THÔNG BÁO -->
+    <!-- DELETE CONFIRM DIALOG -->
+    <v-dialog v-model="deleteDialog.show" max-width="400" rounded="xl">
+      <v-card rounded="xl" class="pa-4">
+        <v-card-title class="d-flex align-center gap-2">
+          <v-icon color="error">mdi-delete-alert-outline</v-icon>
+          Delete Booking
+        </v-card-title>
+        <v-card-text class="text-medium-emphasis">
+          Are you sure you want to delete this booking? This action cannot be undone.
+        </v-card-text>
+        <v-card-actions class="justify-end gap-2">
+          <v-btn variant="text" rounded="lg" class="text-none"
+            @click="deleteDialog.show = false">
+            Cancel
+          </v-btn>
+          <v-btn color="error" variant="flat" rounded="lg" class="text-none font-weight-bold"
+            :loading="deleteDialog.loading"
+            @click="handleDelete">
+            Delete
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- SNACKBAR -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" rounded="lg" timeout="3000" location="bottom right">
       {{ snackbar.message }}
     </v-snackbar>
@@ -199,23 +227,32 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import apiClient from '@/api/axios'
 
-const router = useRouter()
-const userEmail = ref('')
+const router    = useRouter()
+const authStore = useAuthStore()
+
 const activeTab = ref('all')
-const search = ref('')
-const loading = ref(false)
-const bookings = ref([])
-const stats = ref({ total: 0, pending: 0, confirmed: 0, cancelled: 0, expired: 0 })
-const snackbar = ref({ show: false, message: '', color: 'success' })
+const search    = ref('')
+const loading   = ref(false)
+const bookings  = ref([])
+const stats     = ref({ total: 0, pending: 0, confirmed: 0, cancelled: 0, expired: 0 })
+const snackbar  = ref({ show: false, message: '', color: 'success' })
+const deleteDialog = ref({ show: false, loading: false, bookingId: null })
 
 let searchTimeout = null
 
-// ==================== HELPERS ====================
+// ── Avatar letter lấy từ Store ────────────────────────────────────
+const avatarLetter = computed(() => {
+  const name  = authStore.user?.full_name
+  const email = authStore.user?.email
+  return (name || email || 'U').charAt(0).toUpperCase()
+})
 
+// ── Helpers ───────────────────────────────────────────────────────
 const showSnackbar = (message, color = 'success') => {
   snackbar.value = { show: true, message, color }
 }
@@ -227,9 +264,9 @@ const getStatusColor = (status, date, time) => {
   }
   switch (status) {
     case 'confirmed': return 'success'
-    case 'pending': return 'warning'
+    case 'pending':   return 'warning'
     case 'cancelled': return 'error'
-    default: return 'grey'
+    default:          return 'grey'
   }
 }
 
@@ -241,8 +278,7 @@ const getStatusLabel = (status, date, time) => {
   return status
 }
 
-// ==================== API CALLS ====================
-
+// ── API calls ─────────────────────────────────────────────────────
 const fetchStats = async () => {
   try {
     const res = await apiClient.get('/bookings/stats')
@@ -256,57 +292,53 @@ const fetchBookings = async () => {
   loading.value = true
   try {
     const params = {}
-    if (search.value.trim()) params.search = search.value.trim()
+    if (search.value.trim())      params.search = search.value.trim()
     if (activeTab.value !== 'all') params.status = activeTab.value
 
     const res = await apiClient.get('/bookings/me', { params })
     bookings.value = res.data
   } catch (err) {
-    if (err.response?.status === 401) {
-      router.push('/login')
-    } else {
-      showSnackbar('Không thể tải danh sách booking', 'error')
-    }
+    showSnackbar('Failed to load bookings.', 'error')
   } finally {
     loading.value = false
   }
 }
 
-// Debounce search: chờ 400ms sau khi user ngừng gõ mới gọi API
+// Debounce search 400ms
 const onSearch = () => {
   clearTimeout(searchTimeout)
-  searchTimeout = setTimeout(() => {
-    fetchBookings()
-  }, 400)
+  searchTimeout = setTimeout(() => fetchBookings(), 400)
 }
 
-const handleDelete = async (bookingId) => {
-  if (!confirm('Bạn có chắc chắn muốn xóa đơn đặt bàn này?')) return
+// Mở dialog xác nhận xóa
+const confirmDelete = (bookingId) => {
+  deleteDialog.value = { show: true, loading: false, bookingId }
+}
+
+// Thực hiện xóa sau khi user xác nhận trong dialog
+const handleDelete = async () => {
+  deleteDialog.value.loading = true
   try {
-    await apiClient.delete(`/bookings/${bookingId}`)
-    bookings.value = bookings.value.filter(b => b.id !== bookingId)
+    await apiClient.delete(`/bookings/${deleteDialog.value.bookingId}`)
+    bookings.value = bookings.value.filter(b => b.id !== deleteDialog.value.bookingId)
     await fetchStats()
-    showSnackbar('Xóa đơn đặt bàn thành công!')
+    showSnackbar('Booking deleted successfully.')
   } catch (err) {
-    showSnackbar(err.response?.data?.detail || 'Lỗi khi xóa', 'error')
+    showSnackbar(err.response?.data?.detail || 'Failed to delete booking.', 'error')
+  } finally {
+    deleteDialog.value = { show: false, loading: false, bookingId: null }
   }
 }
 
+// Logout qua Store — không tự xóa localStorage thủ công
 const handleLogout = () => {
-  localStorage.removeItem('user_token')
-  localStorage.removeItem('user_email')
+  authStore.logout()
   router.push('/login')
 }
 
-// ==================== LIFECYCLE ====================
-
+// ── Lifecycle ─────────────────────────────────────────────────────
 onMounted(async () => {
-  const token = localStorage.getItem('user_token')
-  if (!token) {
-    router.push('/login')
-    return
-  }
-  userEmail.value = localStorage.getItem('user_email') || 'User'
+  // Không cần kiểm tra token ở đây — router guard đã lo
   await Promise.all([fetchStats(), fetchBookings()])
 })
 </script>

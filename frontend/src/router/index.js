@@ -1,3 +1,4 @@
+// src/router/index.js
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/home/HomeView.vue'
 
@@ -86,19 +87,20 @@ const router = createRouter({
 })
 
 // ==================== NAVIGATION GUARD ====================
-router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('user_token')
-  const userRole = localStorage.getItem('user_role')
+// Dùng import động để tránh circular dependency (store dùng router, router dùng store)
+router.beforeEach(async (to, from, next) => {
+  const { useAuthStore } = await import('@/stores/auth')
+  const authStore = useAuthStore()
 
   // Trang cần login
-  if (to.meta.requiresAuth && !token) {
+  if (to.meta.requiresAuth && !authStore.isLoggedIn) {
     return next('/login')
   }
 
   // Trang cần admin
   if (to.meta.requiresAdmin) {
-    if (!token) return next('/login')
-    if (userRole !== 'admin') return next('/dashboard')
+    if (!authStore.isLoggedIn) return next('/login')
+    if (!authStore.isAdmin)    return next('/dashboard')
   }
 
   next()

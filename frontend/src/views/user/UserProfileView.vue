@@ -10,13 +10,15 @@
               <p class="text-subtitle-1 text-brown">Manage your identity and view your booking performance.</p>
             </div>
             <div class="d-flex gap-3">
-              <v-btn prepend-icon="mdi-logout" variant="flat" color="grey-lighten-3" class="rounded-lg" height="44" @click="handleLogout">Sign Out</v-btn>
-              <v-btn color="primary" variant="flat" class="rounded-lg shadow-btn" height="44" :loading="loading" @click="saveChanges">Save All Changes</v-btn>
+              <v-btn prepend-icon="mdi-logout" variant="flat" color="grey-lighten-3" class="rounded-lg" height="44"
+                @click="handleLogout">Sign Out</v-btn>
+              <v-btn color="primary" variant="flat" class="rounded-lg shadow-btn" height="44"
+                :loading="loading" @click="saveChanges">Save All Changes</v-btn>
             </div>
           </div>
 
           <v-row>
-            <!-- CỘT TRÁI -->
+            <!-- LEFT: PERSONAL INFO + SECURITY -->
             <v-col cols="12" lg="8">
               <div class="d-flex flex-column gap-8">
 
@@ -37,23 +39,43 @@
                     </div>
                   </div>
 
-                  <v-form>
+                  <v-alert v-if="profileError" type="error" variant="tonal" rounded="lg" class="mb-4" closable
+                    @click:close="profileError = ''">
+                    {{ profileError }}
+                  </v-alert>
+
+                  <v-form ref="profileFormRef">
                     <v-row>
                       <v-col cols="12" md="6">
                         <label class="text-sm font-weight-bold mb-1 d-block px-1">Full Name</label>
-                        <v-text-field v-model="user.full_name" variant="solo-filled" flat rounded="lg" hide-details bg-color="grey-lighten-4"></v-text-field>
+                        <v-text-field
+                          v-model="user.full_name"
+                          variant="solo-filled" flat rounded="lg" hide-details
+                          bg-color="grey-lighten-4"
+                          :rules="[rules.required]"
+                        ></v-text-field>
                       </v-col>
                       <v-col cols="12" md="6">
                         <label class="text-sm font-weight-bold mb-1 d-block px-1">Phone Number</label>
-                        <v-text-field v-model="user.phone" variant="solo-filled" flat rounded="lg" hide-details bg-color="grey-lighten-4"></v-text-field>
+                        <v-text-field
+                          v-model="user.phone"
+                          variant="solo-filled" flat rounded="lg" hide-details
+                          bg-color="grey-lighten-4"
+                          :rules="[rules.phone]"
+                          @keypress="allowOnlyDigits"
+                        ></v-text-field>
                       </v-col>
                       <v-col cols="12">
                         <div class="d-flex justify-space-between px-1 mb-1">
                           <label class="text-sm font-weight-bold">Email Address</label>
                           <span class="text-overline text-brown font-weight-black">Read Only</span>
                         </div>
-                        <v-text-field v-model="user.email" variant="solo-filled" flat readonly rounded="lg"
-                          append-inner-icon="mdi-lock" hide-details bg-color="brown-lighten-5" class="readonly-field"></v-text-field>
+                        <v-text-field
+                          v-model="user.email"
+                          variant="solo-filled" flat readonly rounded="lg"
+                          append-inner-icon="mdi-lock" hide-details
+                          bg-color="brown-lighten-5" class="readonly-field"
+                        ></v-text-field>
                       </v-col>
                     </v-row>
                   </v-form>
@@ -65,33 +87,57 @@
                     <v-icon color="primary">mdi-shield-check</v-icon>
                     <h3 class="text-h6 font-weight-bold text-dark">Security Settings</h3>
                   </div>
-                  <v-row>
-                    <v-col cols="12">
-                      <label class="text-sm font-weight-bold mb-1 d-block px-1">Current Password</label>
-                      <v-text-field v-model="passwords.current" type="password" variant="solo-filled" flat
-                        rounded="lg" hide-details bg-color="grey-lighten-4" placeholder="Enter current password"></v-text-field>
-                    </v-col>
-                    <v-col cols="12" md="6">
-                      <label class="text-sm font-weight-bold mb-1 d-block px-1">New Password</label>
-                      <v-text-field v-model="passwords.new" type="password" variant="solo-filled" flat
-                        rounded="lg" hide-details bg-color="grey-lighten-4"></v-text-field>
-                    </v-col>
-                    <v-col cols="12" md="6">
-                      <label class="text-sm font-weight-bold mb-1 d-block px-1">Confirm New Password</label>
-                      <v-text-field v-model="passwords.confirm" type="password" variant="solo-filled" flat
-                        rounded="lg" hide-details bg-color="grey-lighten-4"></v-text-field>
-                    </v-col>
-                  </v-row>
+
+                  <v-alert v-if="passwordError" type="error" variant="tonal" rounded="lg" class="mb-4" closable
+                    @click:close="passwordError = ''">
+                    {{ passwordError }}
+                  </v-alert>
+
+                  <v-form ref="passwordFormRef">
+                    <v-row>
+                      <v-col cols="12">
+                        <label class="text-sm font-weight-bold mb-1 d-block px-1">Current Password</label>
+                        <v-text-field
+                          v-model="passwords.current"
+                          type="password" variant="solo-filled" flat rounded="lg"
+                          bg-color="grey-lighten-4" placeholder="Enter current password"
+                          :rules="[rules.required]"
+                        ></v-text-field>
+                      </v-col>
+                      <v-col cols="12" md="6">
+                        <label class="text-sm font-weight-bold mb-1 d-block px-1">New Password</label>
+                        <v-text-field
+                          v-model="passwords.new"
+                          type="password" variant="solo-filled" flat rounded="lg"
+                          bg-color="grey-lighten-4"
+                          :rules="[rules.required, rules.minLength, rules.hasUppercase, rules.hasNumber, rules.hasSpecial]"
+                        ></v-text-field>
+                      </v-col>
+                      <v-col cols="12" md="6">
+                        <label class="text-sm font-weight-bold mb-1 d-block px-1">Confirm New Password</label>
+                        <v-text-field
+                          v-model="passwords.confirm"
+                          type="password" variant="solo-filled" flat rounded="lg"
+                          bg-color="grey-lighten-4"
+                          :rules="[rules.required, rules.confirmMatch]"
+                        ></v-text-field>
+                      </v-col>
+                    </v-row>
+                  </v-form>
+
                   <div class="mt-6 d-flex justify-end">
-                    <v-btn color="primary" variant="tonal" rounded="lg" class="text-none font-weight-bold px-6"
-                      @click="updatePassword">Update Password</v-btn>
+                    <v-btn color="primary" variant="tonal" rounded="lg"
+                      class="text-none font-weight-bold px-6" :loading="passwordLoading"
+                      @click="updatePassword">
+                      Update Password
+                    </v-btn>
                   </div>
                 </v-card>
 
               </div>
             </v-col>
 
-            <!-- CỘT PHẢI: STATS -->
+            <!-- RIGHT: STATS -->
             <v-col cols="12" lg="4">
               <v-card variant="outlined" class="rounded-xl border-subtle bg-white pa-6 shadow-sm">
                 <h4 class="text-overline font-weight-black text-brown mb-6">Booking Stats</h4>
@@ -167,50 +213,63 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import apiClient from '@/api/axios'
 
-const router = useRouter()
-const loading = ref(false)
-const snackbar = ref({ show: false, message: '', color: 'success' })
+const router    = useRouter()
+const authStore = useAuthStore()
 
-const user = ref({ full_name: '', phone: '', email: '', joined_date: '' })
+const profileFormRef  = ref(null)
+const passwordFormRef = ref(null)
+const loading         = ref(false)
+const passwordLoading = ref(false)
+const profileError    = ref('')
+const passwordError   = ref('')
+const snackbar        = ref({ show: false, message: '', color: 'success' })
+
+// Lấy dữ liệu từ Store — không cần gọi API lại
+const user = ref({
+  full_name:   authStore.user?.full_name  || '',
+  phone:       authStore.user?.phone      || '',
+  email:       authStore.user?.email      || '',
+  joined_date: authStore.user?.created_at || '',
+})
+
 const stats = ref({ total: 0, confirmed: 0, cancelled: 0, pending: 0, expired: 0 })
 const passwords = ref({ current: '', new: '', confirm: '' })
 
-// ==================== HELPERS ====================
+// ── Validation rules ──────────────────────────────────────────────
+const rules = {
+  required:    (v) => !!v?.trim()                             || 'This field is required.',
+  phone:       (v) => !v || /^\d{10}$/.test(v)               || 'Phone must be exactly 10 digits.',
+  minLength:   (v) => v?.length >= 8                          || 'At least 8 characters.',
+  hasUppercase:(v) => /[A-Z]/.test(v)                         || 'At least one uppercase letter.',
+  hasNumber:   (v) => /[0-9]/.test(v)                         || 'At least one number.',
+  hasSpecial:  (v) => /[!@#$%^&*(),.?":{}|<>]/.test(v)       || 'At least one special character.',
+  confirmMatch:(v) => v === passwords.value.new               || 'Passwords do not match.',
+}
 
+// Phone chỉ cho nhập số
+const allowOnlyDigits = (e) => {
+  if (!/[0-9]/.test(e.key)) e.preventDefault()
+}
+
+// ── Helpers ───────────────────────────────────────────────────────
 const showSnackbar = (message, color = 'success') => {
   snackbar.value = { show: true, message, color }
 }
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '...'
-  return new Date(dateStr).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
+  return new Date(dateStr).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
 }
 
 const handleLogout = () => {
-  localStorage.removeItem('user_token')
-  localStorage.removeItem('user_email')
+  authStore.logout()
   router.push('/login')
 }
 
-// ==================== API ====================
-
-const fetchProfile = async () => {
-  try {
-    const res = await apiClient.get('/users/me')
-    user.value = {
-      full_name:   res.data.full_name,
-      phone:       res.data.phone,
-      email:       res.data.email,
-      joined_date: res.data.created_at
-    }
-    await fetchStats()
-  } catch (err) {
-    if (err.response?.status === 401) router.push('/login')
-  }
-}
-
+// ── Fetch stats ───────────────────────────────────────────────────
 const fetchStats = async () => {
   try {
     const res = await apiClient.get('/users/me/stats')
@@ -219,48 +278,66 @@ const fetchStats = async () => {
       confirmed: res.data.confirmed || 0,
       cancelled: res.data.cancelled || 0,
       pending:   res.data.pending   || 0,
-      expired:   res.data.expired   || 0
+      expired:   res.data.expired   || 0,
     }
   } catch (err) {
-    console.error('Stats fail:', err)
+    console.error('Stats error:', err)
   }
 }
 
+// ── Save profile ──────────────────────────────────────────────────
 const saveChanges = async () => {
+  const { valid } = await profileFormRef.value.validate()
+  if (!valid) return
+
   loading.value = true
+  profileError.value = ''
   try {
     await apiClient.patch('/users/me', {
-      full_name: user.value.full_name,
-      phone:     user.value.phone
+      full_name: user.value.full_name.trim(),
+      phone:     user.value.phone.trim(),
     })
-    showSnackbar('Cập nhật profile thành công!')
+
+    // Sync lại Store để navbar và các nơi khác cập nhật tên mới
+    await authStore.fetchUser()
+
+    showSnackbar('Profile updated successfully.')
   } catch (err) {
-    showSnackbar('Lỗi cập nhật profile!', 'error')
+    profileError.value = err.response?.data?.detail || 'Failed to update profile.'
   } finally {
     loading.value = false
   }
 }
 
+// ── Change password ───────────────────────────────────────────────
 const updatePassword = async () => {
-  if (!passwords.value.current) return showSnackbar('Vui lòng nhập mật khẩu hiện tại!', 'error')
-  if (!passwords.value.new)     return showSnackbar('Vui lòng nhập mật khẩu mới!', 'error')
-  if (passwords.value.new !== passwords.value.confirm) {
-    return showSnackbar('Mật khẩu mới không khớp!', 'error')
-  }
+  const { valid } = await passwordFormRef.value.validate()
+  if (!valid) return
+
+  passwordLoading.value = true
+  passwordError.value = ''
   try {
     await apiClient.post('/users/me/change-password', {
       current_password: passwords.value.current,
-      new_password:     passwords.value.new
+      new_password:     passwords.value.new,
     })
-    showSnackbar('Đổi mật khẩu thành công!')
+    showSnackbar('Password updated successfully.')
     passwords.value = { current: '', new: '', confirm: '' }
+    passwordFormRef.value.reset()
   } catch (err) {
-    const msg = err.response?.data?.detail || 'Mật khẩu cũ không chính xác!'
-    showSnackbar(typeof msg === 'string' ? msg : 'Lỗi đổi mật khẩu!', 'error')
+    const msg = err.response?.data?.detail
+    passwordError.value = typeof msg === 'string' ? msg : 'Incorrect current password.'
+  } finally {
+    passwordLoading.value = false
   }
 }
 
-onMounted(fetchProfile)
+// ── Lifecycle ─────────────────────────────────────────────────────
+onMounted(async () => {
+  // Không cần fetch /users/me lại — Store đã có
+  // Chỉ fetch stats
+  await fetchStats()
+})
 </script>
 
 <style scoped>

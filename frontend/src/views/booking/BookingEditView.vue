@@ -12,7 +12,7 @@
 
         <div class="mb-8">
           <h1 class="text-h3 font-weight-black tracking-tight mb-2">Edit Booking Details</h1>
-          <p class="text-body-1 text-medium-emphasis">Cập nhật thông tin đặt bàn của bạn.</p>
+          <p class="text-body-1 text-medium-emphasis">Update your reservation information below.</p>
         </div>
 
         <!-- LOADING -->
@@ -22,18 +22,18 @@
 
         <!-- NOT FOUND -->
         <v-alert v-else-if="!booking" type="error" variant="tonal" rounded="lg">
-          Không tìm thấy đơn đặt bàn này.
-          <v-btn variant="text" color="error" @click="router.push('/dashboard')">Quay lại Dashboard</v-btn>
+          Booking not found.
+          <v-btn variant="text" color="error" @click="router.push('/dashboard')">Back to Dashboard</v-btn>
         </v-alert>
 
         <template v-else>
-          <!-- INFO NHÀ HÀNG (readonly) -->
+          <!-- RESTAURANT INFO (readonly) -->
           <v-card variant="outlined" rounded="xl" class="bg-white border-subtle mb-6 overflow-hidden">
             <div class="pa-4 d-flex align-center gap-3" style="background-color: #ee7c2b;">
               <v-icon color="white" size="20">mdi-storefront-outline</v-icon>
-              <span class="text-white font-weight-bold text-body-1">Nhà Hàng Đã Đặt</span>
+              <span class="text-white font-weight-bold text-body-1">Reserved Restaurant</span>
               <v-spacer></v-spacer>
-              <v-chip size="small" color="white" variant="tonal" class="text-white">Không thể thay đổi</v-chip>
+              <v-chip size="small" color="white" variant="tonal" class="text-white">Cannot be changed</v-chip>
             </div>
             <div class="pa-5 d-flex align-center gap-4">
               <v-avatar color="orange-lighten-5" size="52" rounded="lg">
@@ -61,26 +61,26 @@
             </div>
           </v-card>
 
-          <!-- FORM SỬA -->
+          <!-- EDIT FORM -->
           <v-card variant="outlined" rounded="xl" class="bg-white border-subtle overflow-hidden">
             <v-alert v-if="errorMessage" type="error" variant="tonal" rounded="0" class="mb-0" closable
               @click:close="errorMessage = ''">
               {{ errorMessage }}
             </v-alert>
 
-            <v-form @submit.prevent="updateBooking" class="pa-8">
+            <v-form ref="formRef" @submit.prevent="updateBooking" class="pa-8">
 
-              <!-- NGÀY GIỜ KHÁCH -->
+              <!-- DATE / TIME / GUESTS -->
               <div class="d-flex align-center gap-2 mb-6 border-b pb-2">
                 <v-avatar color="orange-lighten-5" size="32" rounded="lg">
                   <v-icon color="primary" size="18">mdi-calendar-clock</v-icon>
                 </v-avatar>
-                <h2 class="text-h6 font-weight-bold">Thời Gian & Số Khách</h2>
+                <h2 class="text-h6 font-weight-bold">Date, Time & Guests</h2>
               </div>
 
               <v-row>
                 <v-col cols="12" md="4">
-                  <label class="text-subtitle-2 font-weight-bold mb-2 d-block">Ngày đặt</label>
+                  <label class="text-subtitle-2 font-weight-bold mb-2 d-block">Booking Date</label>
                   <v-text-field
                     v-model="form.booking_date"
                     type="date"
@@ -89,10 +89,11 @@
                     density="comfortable"
                     color="primary"
                     :min="today"
+                    :rules="[rules.required]"
                   ></v-text-field>
                 </v-col>
                 <v-col cols="12" md="4">
-                  <label class="text-subtitle-2 font-weight-bold mb-2 d-block">Giờ đặt</label>
+                  <label class="text-subtitle-2 font-weight-bold mb-2 d-block">Booking Time</label>
                   <v-text-field
                     v-model="form.booking_time"
                     type="time"
@@ -100,10 +101,11 @@
                     rounded="lg"
                     density="comfortable"
                     color="primary"
+                    :rules="[rules.required]"
                   ></v-text-field>
                 </v-col>
                 <v-col cols="12" md="4">
-                  <label class="text-subtitle-2 font-weight-bold mb-2 d-block">Số khách</label>
+                  <label class="text-subtitle-2 font-weight-bold mb-2 d-block">Number of Guests</label>
                   <v-text-field
                     v-model.number="form.number_of_guests"
                     type="number"
@@ -113,6 +115,7 @@
                     density="comfortable"
                     prepend-inner-icon="mdi-account-group-outline"
                     color="primary"
+                    :rules="[rules.required, rules.minGuests]"
                   ></v-text-field>
                 </v-col>
               </v-row>
@@ -122,12 +125,12 @@
                 <v-avatar color="orange-lighten-5" size="32" rounded="lg">
                   <v-icon color="primary" size="18">mdi-list-status</v-icon>
                 </v-avatar>
-                <h2 class="text-h6 font-weight-bold">Trạng Thái</h2>
+                <h2 class="text-h6 font-weight-bold">Status</h2>
               </div>
 
               <v-row>
                 <v-col cols="12" md="6">
-                  <label class="text-subtitle-2 font-weight-bold mb-2 d-block">Cập nhật trạng thái</label>
+                  <label class="text-subtitle-2 font-weight-bold mb-2 d-block">Update Status</label>
                   <v-select
                     v-model="form.status"
                     :items="statusItems"
@@ -153,22 +156,22 @@
                     color="red-lighten-5" rounded="lg" class="pa-3 d-flex align-center gap-2 w-100"
                   >
                     <v-icon color="error" size="18">mdi-alert-circle-outline</v-icon>
-                    <span class="text-caption text-error font-weight-bold">Hủy đơn sẽ không thể hoàn tác!</span>
+                    <span class="text-caption text-error font-weight-bold">Cancelling cannot be undone!</span>
                   </v-sheet>
                 </v-col>
               </v-row>
 
-              <!-- GHI CHÚ -->
+              <!-- NOTES -->
               <div class="d-flex align-center gap-2 mb-6 border-b pb-2 mt-4">
                 <v-avatar color="orange-lighten-5" size="32" rounded="lg">
                   <v-icon color="primary" size="18">mdi-note-text-outline</v-icon>
                 </v-avatar>
-                <h2 class="text-h6 font-weight-bold">Ghi Chú</h2>
+                <h2 class="text-h6 font-weight-bold">Special Notes</h2>
               </div>
 
               <v-textarea
                 v-model="form.special_notes"
-                placeholder="Ghi chú đặc biệt..."
+                placeholder="Any special requests..."
                 variant="outlined"
                 rounded="lg"
                 rows="3"
@@ -179,15 +182,15 @@
               <!-- ACTIONS -->
               <div class="d-flex flex-wrap align-center justify-space-between pt-6 border-t gap-4">
                 <v-btn color="error" variant="tonal" prepend-icon="mdi-delete-outline"
-                  size="large" rounded="lg" class="text-none" @click="confirmDelete">
-                  Xóa Booking
+                  size="large" rounded="lg" class="text-none" @click="deleteDialog = true">
+                  Delete Booking
                 </v-btn>
                 <div class="d-flex gap-3">
                   <v-btn variant="outlined" size="large" rounded="lg" class="text-none"
-                    @click="router.push('/dashboard')">Hủy</v-btn>
+                    @click="router.push('/dashboard')">Cancel</v-btn>
                   <v-btn color="primary" size="large" rounded="lg" class="text-none px-8"
                     type="submit" prepend-icon="mdi-content-save-outline" :loading="loading">
-                    Lưu Thay Đổi
+                    Save Changes
                   </v-btn>
                 </div>
               </div>
@@ -196,14 +199,14 @@
 
           <!-- ACTIVITY TIMELINE -->
           <div class="mt-10">
-            <h3 class="text-h6 font-weight-bold mb-4">Lịch Sử Hoạt Động</h3>
+            <h3 class="text-h6 font-weight-bold mb-4">Activity History</h3>
             <v-timeline side="end" align="start" density="compact">
               <v-timeline-item dot-color="primary" size="x-small">
-                <div class="text-body-2 font-weight-bold">Booking được cập nhật lần cuối</div>
+                <div class="text-body-2 font-weight-bold">Last updated</div>
                 <div class="text-caption text-medium-emphasis">{{ formatDate(booking.updated_at) }}</div>
               </v-timeline-item>
               <v-timeline-item dot-color="grey" size="x-small">
-                <div class="text-body-2">Booking được tạo</div>
+                <div class="text-body-2">Booking created</div>
                 <div class="text-caption text-medium-emphasis">{{ formatDate(booking.created_at) }}</div>
               </v-timeline-item>
             </v-timeline>
@@ -212,6 +215,28 @@
 
       </v-col>
     </v-row>
+
+    <!-- DELETE CONFIRM DIALOG -->
+    <v-dialog v-model="deleteDialog" max-width="400" rounded="xl">
+      <v-card rounded="xl" class="pa-4">
+        <v-card-title class="d-flex align-center gap-2">
+          <v-icon color="error">mdi-delete-alert-outline</v-icon>
+          Delete Booking
+        </v-card-title>
+        <v-card-text class="text-medium-emphasis">
+          Are you sure you want to delete this booking? This action cannot be undone.
+        </v-card-text>
+        <v-card-actions class="justify-end gap-2">
+          <v-btn variant="text" rounded="lg" class="text-none" @click="deleteDialog = false">
+            Cancel
+          </v-btn>
+          <v-btn color="error" variant="flat" rounded="lg" class="text-none font-weight-bold"
+            :loading="deleteLoading" @click="handleDelete">
+            Delete
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <!-- SNACKBAR -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" rounded="lg" timeout="3000" location="bottom right">
@@ -225,22 +250,26 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import apiClient from '@/api/axios'
 
-const route = useRoute()
-const router = useRouter()
+const route     = useRoute()
+const router    = useRouter()
 const bookingId = route.params.id
-const loading = ref(false)
-const pageLoading = ref(true)
+
+const formRef      = ref(null)
+const loading      = ref(false)
+const deleteLoading = ref(false)
+const pageLoading  = ref(true)
 const errorMessage = ref('')
-const booking = ref(null)
-const snackbar = ref({ show: false, message: '', color: 'success' })
-const today = new Date().toISOString().split('T')[0]
+const booking      = ref(null)
+const deleteDialog = ref(false)
+const snackbar     = ref({ show: false, message: '', color: 'success' })
+const today        = new Date().toISOString().split('T')[0]
 
 const form = ref({
-  booking_date: '',
-  booking_time: '',
+  booking_date:     '',
+  booking_time:     '',
   number_of_guests: 1,
-  special_notes: '',
-  status: 'pending'
+  special_notes:    '',
+  status:           'pending'
 })
 
 const statusItems = [
@@ -249,8 +278,13 @@ const statusItems = [
   { label: 'Cancelled', value: 'cancelled', color: 'error',   icon: 'mdi-close-circle-outline' },
 ]
 
-// ==================== HELPERS ====================
+// ── Validation rules ──────────────────────────────────────────────
+const rules = {
+  required:  (v) => !!v || 'This field is required.',
+  minGuests: (v) => v >= 1 || 'At least 1 guest required.',
+}
 
+// ── Helpers ───────────────────────────────────────────────────────
 const showSnackbar = (message, color = 'success') => {
   snackbar.value = { show: true, message, color }
 }
@@ -266,18 +300,17 @@ const getStatusColor = (status) => {
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleString('vi-VN', {
+  return new Date(dateStr).toLocaleString('en-GB', {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit'
   })
 }
 
-// ==================== API ====================
-
+// ── Load booking theo ID thẳng từ API ────────────────────────────
 onMounted(async () => {
-  if (!localStorage.getItem('user_token')) return router.push('/login')
   try {
-    // Lấy danh sách rồi tìm booking theo ID
+    // Gọi thẳng /bookings/me rồi tìm theo id
+    // (nếu backend có GET /bookings/{id} thì thay bằng apiClient.get(`/bookings/${bookingId}`))
     const res = await apiClient.get('/bookings/me')
     const found = res.data.find(b => b.id == bookingId)
     if (found) {
@@ -291,17 +324,17 @@ onMounted(async () => {
       }
     }
   } catch (err) {
-    console.error('Lỗi lấy dữ liệu:', err)
+    console.error('Failed to load booking:', err)
   } finally {
     pageLoading.value = false
   }
 })
 
+// ── Update booking ────────────────────────────────────────────────
 const updateBooking = async () => {
-  if (form.value.number_of_guests < 1) {
-    errorMessage.value = 'Số khách phải lớn hơn 0!'
-    return
-  }
+  const { valid } = await formRef.value.validate()
+  if (!valid) return
+
   loading.value = true
   errorMessage.value = ''
   try {
@@ -312,24 +345,28 @@ const updateBooking = async () => {
       special_notes:    form.value.special_notes || null,
       status:           form.value.status
     })
-    showSnackbar('Cập nhật thành công!')
+    showSnackbar('Booking updated successfully.')
     setTimeout(() => router.push('/dashboard'), 1000)
   } catch (err) {
     const detail = err.response?.data?.detail
-    errorMessage.value = typeof detail === 'string' ? detail : 'Lỗi cập nhật, vui lòng thử lại!'
+    errorMessage.value = typeof detail === 'string' ? detail : 'Failed to update booking. Please try again.'
   } finally {
     loading.value = false
   }
 }
 
-const confirmDelete = async () => {
-  if (!confirm('Bạn có chắc chắn muốn xóa đơn đặt bàn này?')) return
+// ── Delete booking ────────────────────────────────────────────────
+const handleDelete = async () => {
+  deleteLoading.value = true
   try {
     await apiClient.delete(`/bookings/${bookingId}`)
-    showSnackbar('Đã xóa đơn đặt bàn!')
+    showSnackbar('Booking deleted successfully.')
     setTimeout(() => router.push('/dashboard'), 1000)
   } catch (err) {
-    showSnackbar(err.response?.data?.detail || 'Lỗi khi xóa!', 'error')
+    showSnackbar(err.response?.data?.detail || 'Failed to delete booking.', 'error')
+    deleteDialog.value = false
+  } finally {
+    deleteLoading.value = false
   }
 }
 </script>

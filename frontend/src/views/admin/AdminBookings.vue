@@ -54,8 +54,7 @@
             :key="tab.value"
             :variant="activeStatus === tab.value ? 'flat' : 'text'"
             :color="activeStatus === tab.value ? 'indigo-darken-3' : 'grey'"
-            rounded="lg"
-            size="small"
+            rounded="lg" size="small"
             class="text-none font-weight-bold"
             @click="activeStatus = tab.value; fetchBookings()"
           >
@@ -70,12 +69,9 @@
         <v-text-field
           v-model="search"
           placeholder="Search bookings..."
-          variant="solo"
-          flat
-          density="compact"
+          variant="solo" flat density="compact"
           prepend-inner-icon="mdi-magnify"
-          hide-details
-          rounded="lg"
+          hide-details rounded="lg"
           bg-color="grey-lighten-4"
           style="max-width: 280px;"
           @update:model-value="onSearch"
@@ -132,17 +128,13 @@
               </v-chip>
             </td>
             <td>
-              <v-chip
-                :color="getStatusColor(booking.status)"
-                size="small"
-                variant="flat"
-                class="font-weight-bold text-uppercase"
-                label
-              >{{ booking.status }}</v-chip>
+              <v-chip :color="getStatusColor(booking.status)" size="small"
+                variant="flat" class="font-weight-bold text-uppercase" label>
+                {{ booking.status }}
+              </v-chip>
             </td>
             <td class="text-right">
               <div class="d-flex justify-end gap-2 action-btns">
-                <!-- Confirm button chỉ hiện khi pending -->
                 <v-tooltip text="Confirm" location="top">
                   <template v-slot:activator="{ props }">
                     <v-btn v-if="booking.status === 'pending'"
@@ -152,7 +144,6 @@
                     </v-btn>
                   </template>
                 </v-tooltip>
-                <!-- Cancel button -->
                 <v-tooltip text="Cancel" location="top">
                   <template v-slot:activator="{ props }">
                     <v-btn v-if="booking.status !== 'cancelled'"
@@ -162,7 +153,6 @@
                     </v-btn>
                   </template>
                 </v-tooltip>
-                <!-- Delete button -->
                 <v-tooltip text="Delete" location="top">
                   <template v-slot:activator="{ props }">
                     <v-btn v-bind="props" icon size="small" color="grey" variant="tonal"
@@ -177,13 +167,12 @@
           <tr v-if="!loading && bookings.length === 0">
             <td colspan="7" class="text-center py-10 text-grey">
               <v-icon size="48" color="grey-lighten-2" class="mb-2">mdi-calendar-blank</v-icon>
-              <div>Không có booking nào</div>
+              <div>No bookings found.</div>
             </td>
           </tr>
         </tbody>
       </v-table>
 
-      <!-- PAGINATION INFO -->
       <div class="px-6 py-4 bg-grey-lighten-5 d-flex align-center justify-space-between border-t">
         <span class="text-caption font-weight-bold text-grey"
           style="text-transform:uppercase; letter-spacing:0.1em;">
@@ -192,24 +181,27 @@
       </div>
     </v-card>
 
-    <!-- DIALOG XÁC NHẬN XÓA -->
+    <!-- DELETE DIALOG -->
     <v-dialog v-model="deleteDialog.show" max-width="420">
       <v-card rounded="xl" class="pa-6">
         <div class="text-center mb-6">
           <v-avatar color="red-lighten-4" size="64" class="mb-4">
             <v-icon color="error" size="32">mdi-delete-outline</v-icon>
           </v-avatar>
-          <h3 class="text-h6 font-weight-bold text-dark mb-2">Xóa booking?</h3>
+          <h3 class="text-h6 font-weight-bold text-dark mb-2">Delete Booking?</h3>
           <p class="text-body-2 text-grey-darken-1">
-            Xóa booking <strong>#BK-{{ String(deleteDialog.booking?.id || 0).padStart(4, '0') }}</strong>
-            của <strong>{{ deleteDialog.booking?.user?.full_name || 'user này' }}</strong>?
+            Delete booking
+            <strong>#BK-{{ String(deleteDialog.booking?.id || 0).padStart(4, '0') }}</strong>
+            from <strong>{{ deleteDialog.booking?.user?.full_name || 'this user' }}</strong>?
+            This action cannot be undone.
           </p>
         </div>
         <div class="d-flex gap-3">
           <v-btn variant="outlined" rounded="lg" class="text-none flex-grow-1"
-            @click="deleteDialog.show = false">Hủy</v-btn>
-          <v-btn color="error" variant="flat" rounded="lg" class="text-none font-weight-bold flex-grow-1"
-            :loading="deleteDialog.loading" @click="deleteBooking">Xóa</v-btn>
+            @click="deleteDialog.show = false">Cancel</v-btn>
+          <v-btn color="error" variant="flat" rounded="lg"
+            class="text-none font-weight-bold flex-grow-1"
+            :loading="deleteDialog.loading" @click="deleteBooking">Delete</v-btn>
         </div>
       </v-card>
     </v-dialog>
@@ -225,17 +217,16 @@
 import { ref, computed, onMounted } from 'vue'
 import apiClient from '@/api/axios'
 
-const bookings = ref([])
-const loading = ref(false)
-const search = ref('')
+const bookings     = ref([])
+const loading      = ref(false)
+const search       = ref('')
 const activeStatus = ref('all')
 const deleteDialog = ref({ show: false, loading: false, booking: null })
-const snackbar = ref({ show: false, message: '', color: 'success' })
-let searchTimeout = null
+const snackbar     = ref({ show: false, message: '', color: 'success' })
+let searchTimeout  = null
 
-// ==================== COMPUTED ====================
-
-const pendingCount = computed(() => bookings.value.filter(b => b.status === 'pending').length)
+// ── Computed ──────────────────────────────────────────────────────
+const pendingCount   = computed(() => bookings.value.filter(b => b.status === 'pending').length)
 const confirmedCount = computed(() => bookings.value.filter(b => b.status === 'confirmed').length)
 const cancelledCount = computed(() => bookings.value.filter(b => b.status === 'cancelled').length)
 
@@ -246,8 +237,7 @@ const statusTabs = computed(() => [
   { label: 'Cancelled', value: 'cancelled', count: cancelledCount.value },
 ])
 
-// ==================== HELPERS ====================
-
+// ── Helpers ───────────────────────────────────────────────────────
 const showSnackbar = (message, color = 'success') => {
   snackbar.value = { show: true, message, color }
 }
@@ -270,18 +260,17 @@ const onSearch = () => {
   searchTimeout = setTimeout(() => fetchBookings(), 400)
 }
 
-// ==================== API ====================
-
+// ── API ───────────────────────────────────────────────────────────
 const fetchBookings = async () => {
   loading.value = true
   try {
     const params = { limit: 100 }
-    if (search.value.trim()) params.search = search.value.trim()
+    if (search.value.trim())       params.search = search.value.trim()
     if (activeStatus.value !== 'all') params.status = activeStatus.value
     const res = await apiClient.get('/admin/bookings', { params })
     bookings.value = res.data
   } catch (err) {
-    showSnackbar('Lỗi tải danh sách booking!', 'error')
+    showSnackbar('Failed to load bookings.', 'error')
   } finally {
     loading.value = false
   }
@@ -290,11 +279,12 @@ const fetchBookings = async () => {
 const updateStatus = async (bookingId, status) => {
   try {
     await apiClient.patch(`/admin/bookings/${bookingId}`, { status })
-    const label = status === 'confirmed' ? 'Đã xác nhận!' : 'Đã hủy booking!'
-    showSnackbar(label)
-    await fetchBookings()
+    showSnackbar(status === 'confirmed' ? 'Booking confirmed.' : 'Booking cancelled.')
+    // Cập nhật local state — không fetch lại toàn bộ
+    const booking = bookings.value.find(b => b.id === bookingId)
+    if (booking) booking.status = status
   } catch (err) {
-    showSnackbar('Lỗi cập nhật trạng thái!', 'error')
+    showSnackbar(err.response?.data?.detail || 'Failed to update status.', 'error')
   }
 }
 
@@ -302,11 +292,11 @@ const deleteBooking = async () => {
   deleteDialog.value.loading = true
   try {
     await apiClient.delete(`/admin/bookings/${deleteDialog.value.booking.id}`)
-    showSnackbar('Đã xóa booking!')
+    showSnackbar('Booking deleted successfully.')
     deleteDialog.value.show = false
     await fetchBookings()
   } catch (err) {
-    showSnackbar('Lỗi khi xóa!', 'error')
+    showSnackbar(err.response?.data?.detail || 'Failed to delete booking.', 'error')
   } finally {
     deleteDialog.value.loading = false
   }
@@ -322,29 +312,12 @@ onMounted(fetchBookings)
 .tracking-tight { letter-spacing: -0.02em !important; }
 .gap-3 { gap: 12px; }
 .gap-4 { gap: 16px; }
-
-.stat-card {
-  background: #fff !important;
-  border: 1px solid #f1f5f9 !important;
-}
+.stat-card { background: #fff !important; border: 1px solid #f1f5f9 !important; }
 .shadow-indigo { box-shadow: 0 8px 24px rgba(55, 48, 163, 0.25) !important; }
 .h-100 { height: 100%; }
-
-.sparkle-icon {
-  position: absolute;
-  bottom: -10px;
-  right: -10px;
-  opacity: 0.08;
-}
-
-.table-header th {
-  background-color: #f8fafc !important;
-  padding: 16px 20px !important;
-}
-.table-row td {
-  padding: 0 20px !important;
-  border-bottom: 1px solid #f1f5f9 !important;
-}
+.sparkle-icon { position: absolute; bottom: -10px; right: -10px; opacity: 0.08; }
+.table-header th { background-color: #f8fafc !important; padding: 16px 20px !important; }
+.table-row td { padding: 0 20px !important; border-bottom: 1px solid #f1f5f9 !important; }
 .table-row:hover { background-color: #f8fafc !important; }
 .action-btns { opacity: 0; transition: opacity 0.2s; }
 .table-row:hover .action-btns { opacity: 1; }

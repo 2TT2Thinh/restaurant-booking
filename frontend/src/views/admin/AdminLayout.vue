@@ -85,7 +85,6 @@
           rounded="lg"
           bg-color="grey-lighten-4"
           style="max-width: 360px;"
-          @keyup.enter="handleSearch"
         ></v-text-field>
 
         <v-spacer></v-spacer>
@@ -100,15 +99,17 @@
 
         <v-divider vertical class="mr-4" style="height: 32px;"></v-divider>
 
-        <!-- ADMIN PROFILE -->
+        <!-- ADMIN PROFILE — lấy từ Store -->
         <div class="d-flex align-center gap-3">
           <div class="text-right">
-            <div class="text-caption font-weight-bold text-indigo-darken-3 leading-tight">{{ adminEmail }}</div>
+            <div class="text-caption font-weight-bold text-indigo-darken-3 leading-tight">
+              {{ authStore.user?.full_name || authStore.user?.email || 'Admin' }}
+            </div>
             <div class="text-caption text-grey" style="font-size: 10px;">Super Admin</div>
           </div>
           <v-avatar color="indigo-darken-3" size="36">
             <span class="text-white text-body-2 font-weight-bold">
-              {{ adminEmail ? adminEmail.charAt(0).toUpperCase() : 'A' }}
+              {{ avatarLetter }}
             </span>
           </v-avatar>
         </div>
@@ -124,34 +125,35 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
-const router = useRouter()
-const drawer = ref(true)
+const router    = useRouter()
+const authStore = useAuthStore()
+
+const drawer      = ref(true)
 const searchQuery = ref('')
-const adminEmail = ref('')
 
 const navItems = [
-  { title: 'Dashboard',    icon: 'mdi-view-dashboard-outline', to: '/admin' },
-  { title: 'Restaurants',  icon: 'mdi-silverware-fork-knife',  to: '/admin/restaurants' },
-  { title: 'Bookings',     icon: 'mdi-calendar-check-outline', to: '/admin/bookings' },
-  { title: 'Users',        icon: 'mdi-account-group-outline',  to: '/admin/users' },
+  { title: 'Dashboard',   icon: 'mdi-view-dashboard-outline', to: '/admin' },
+  { title: 'Restaurants', icon: 'mdi-silverware-fork-knife',  to: '/admin/restaurants' },
+  { title: 'Bookings',    icon: 'mdi-calendar-check-outline', to: '/admin/bookings' },
+  { title: 'Users',       icon: 'mdi-account-group-outline',  to: '/admin/users' },
 ]
 
+// Avatar letter lấy từ Store
+const avatarLetter = computed(() => {
+  const name  = authStore.user?.full_name
+  const email = authStore.user?.email
+  return (name || email || 'A').charAt(0).toUpperCase()
+})
+
+// Logout qua Store — không tự xóa localStorage
 const handleLogout = () => {
-  localStorage.removeItem('user_token')
-  localStorage.removeItem('user_email')
+  authStore.logout()
   router.push('/login')
 }
-
-const handleSearch = () => {
-  // Search toàn cục nếu cần sau này
-}
-
-onMounted(() => {
-  adminEmail.value = localStorage.getItem('user_email') || 'Admin'
-})
 </script>
 
 <style scoped>

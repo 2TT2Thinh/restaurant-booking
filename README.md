@@ -207,15 +207,17 @@ restaurant-booking/
 ├── backend/
 │   ├── app/
 │   │   ├── api/v1/endpoints/
-│   │   │   ├── auth.py          # Đăng ký / Đăng nhập
-│   │   │   ├── users.py         # Profile, đổi mật khẩu
-│   │   │   ├── bookings.py      # Đặt bàn CRUD + stats
-│   │   │   ├── restaurants.py   # CRUD nhà hàng
-│   │   │   └── admin.py         # Admin endpoints
+│   │   │   |  ├── auth.py          # Đăng ký / Đăng nhập
+│   │   │   |  ├── users.py         # Profile, đổi mật khẩu
+│   │   │   |  ├── bookings.py      # Đặt bàn CRUD + stats
+│   │   │   |  ├── restaurants.py   # CRUD nhà hàng
+│   │   │   |  └── admin.py         # Admin endpoints
+|   |   |   |
+|   |   |   ├──deps.py
 │   │   ├── core/
 │   │   │   ├── config.py        # Pydantic settings
 │   │   │   ├── security.py      # JWT, password hash
-│   │   │   └── database.py      # Async DB session
+│   │   │   
 │   │   ├── models/              # SQLAlchemy models
 │   │   ├── schemas/             # Pydantic schemas
 │   │   ├── crud/                # Database operations

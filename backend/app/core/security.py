@@ -1,12 +1,14 @@
+# app/core/security.py
 from datetime import datetime, timedelta, timezone
 from typing import Any, Union
+
 from jose import jwt
 from passlib.context import CryptContext
+
 from app.core.config import settings
 
-
-
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 
 def create_access_token(subject: Union[str, Any]) -> str:
     expire = datetime.now(timezone.utc) + timedelta(
@@ -15,8 +17,14 @@ def create_access_token(subject: Union[str, Any]) -> str:
     to_encode = {"exp": expire, "sub": str(subject)}
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
-def getpassword_hash(password: str) -> str:
+
+def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
+
+
+# Keep old name as alias so existing callers don't break during migration
+getpassword_hash = get_password_hash

@@ -14,6 +14,6 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     role = Column(String(20), server_default="customer")
     created_at = Column(DateTime, server_default=func.now())
-
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     # Relationship: 1 user có nhiều booking
     bookings = relationship("Booking", back_populates="user")

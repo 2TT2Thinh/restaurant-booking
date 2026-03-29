@@ -2,17 +2,16 @@ from typing import List, Optional
 from datetime import datetime,timezone, timedelta
 from sqlalchemy import func, or_, select, and_, case
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.models.booking import Booking
 from app.schemas.booking import BookingCreate, BookingUpdate
 from app.core.config import settings
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, contains_eager
 from app.models.restaurant import Restaurant
 from fastapi import HTTPException
-
+from app.exceptions import RestaurantNotFound, CapacityExceeded
 async def get_user_bookings(db: AsyncSession, user_id: int):
     query = (
-        select(Booking)
+        select(Booking) 
         .options(selectinload(Booking.restaurant))  # THÊM dòng này
         .where(Booking.user_id == user_id)
         .order_by(Booking.created_at.desc())
@@ -24,27 +23,36 @@ async def get_user_bookings(db: AsyncSession, user_id: int):
 async def create_booking(db: AsyncSession, obj_in: BookingCreate, user_id: int):
     # THÊM: Check nhà hàng tồn tại
     restaurant = await db.get(Restaurant, obj_in.restaurant_id)
-    if not restaurant:
-        raise HTTPException(status_code=404, detail="Nhà hàng không tồn tại")
-
+    
+    
     # THÊM: Check số khách không vượt capacity
     if obj_in.number_of_guests > restaurant.max_capacity:
         raise HTTPException(
             status_code=400,
             detail=f"Nhà hàng chỉ chứa tối đa {restaurant.max_capacity} khách"
         )
-
-    # THÊM: Check trùng giờ
-    conflict = await db.execute(
-        select(Booking).where(
+    
+   # Kiểm tra tổng số khách trong cửa sổ 2 giờ quanh thời gian đặt
+    booked_guests = await db.scalar(
+        select(func.coalesce(func.sum(Booking.number_of_guests), 0)).where(
             Booking.restaurant_id == obj_in.restaurant_id,
             Booking.booking_date == obj_in.booking_date,
-            Booking.booking_time == obj_in.booking_time,
+            Booking.booking_time.between(
+                (datetime.combine(obj_in.booking_date, obj_in.booking_time) - timedelta(hours=1)).time(),
+                (datetime.combine(obj_in.booking_date, obj_in.booking_time) + timedelta(hours=1)).time(),
+            ),
             Booking.status != "cancelled"
         )
     )
-    if conflict.scalars().first():
-        raise HTTPException(status_code=400, detail="Khung giờ này đã có người đặt")
+    if (booked_guests + obj_in.number_of_guests) > restaurant.max_capacity:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Nhà hàng không đủ chỗ. Còn trống: {restaurant.max_capacity - booked_guests} khách"
+        )
+    if not restaurant:
+        raise RestaurantNotFound()
+    if booked_guests + obj_in.number_of_guests > restaurant.max_capacity:
+        raise CapacityExceeded(restaurant.max_capacity)
 
     # GIỮ NGUYÊN phần tạo booking
     new_booking = Booking(
@@ -123,10 +131,14 @@ async def get_multi_bookings(
 
     if search:
         search_term = f"%{search.strip()}%"
-        # SỬA: JOIN Restaurant thay vì search Booking.restaurant_name
-        query = query.join(Restaurant).where(
-            Restaurant.name.ilike(search_term)
+        query = (
+            query
+            .join(Restaurant, Booking.restaurant_id == Restaurant.id)
+            .options(contains_eager(Booking.restaurant))  # thay thế selectinload
+            .where(Restaurant.name.ilike(search_term))
         )
+    else:
+        query = query.options(selectinload(Booking.restaurant))
 
     # GIỮ NGUYÊN phần status, order, offset, limit
     if status and status.lower() != "all":

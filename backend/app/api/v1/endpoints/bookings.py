@@ -7,7 +7,7 @@ from app.schemas.booking import BookingRead
 from app.models.user import User
 from app.schemas.booking import BookingCreate, BookingUpdate
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.api.deps import api_key_scheme
+from app.exceptions import CapacityExceeded, RestaurantNotFound, TimeSlotConflict
 
 router = APIRouter()
 
@@ -48,15 +48,15 @@ async def create_new_booking(
     db: AsyncSession = Depends(deps.get_db),
     current_user = Depends(deps.get_current_user) # Bảo mật: Chỉ ai login mới đặt được
 ):
-    """
-    Tạo một đơn đặt bàn mới.
-    user_id được lấy tự động từ Token.
-    """
-    return await crud_booking.create_booking(
-        db=db, 
-        obj_in=booking_in, 
-        user_id=current_user.id
-    )
+    try:
+        return await crud_booking.create_booking(db=db, obj_in=booking_in, user_id=current_user.id)
+    except RestaurantNotFound:
+        raise HTTPException(status_code=404, detail="Nhà hàng không tồn tại")
+    except CapacityExceeded as e:
+        raise HTTPException(status_code=400, detail=f"Nhà hàng chỉ chứa tối đa {e.max_capacity} khách")
+    except TimeSlotConflict:
+        raise HTTPException(status_code=409, detail="Khung giờ này đã đầy")
+    
 
 
 @router.patch("/{booking_id}", response_model=BookingRead)

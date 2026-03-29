@@ -5,14 +5,11 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str
     
-    # Google Maps
-    GOOGLE_MAPS_API_KEY: str
-    
     # JWT
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    
+    ALLOWED_ORIGINS: list[str] = ["http://localhost:5173"]
     # CORS & Environment
     FRONTEND_URL: str
     ENVIRONMENT: str = "development"

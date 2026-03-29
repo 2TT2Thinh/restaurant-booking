@@ -16,7 +16,7 @@ class Restaurant(Base):
     closing_time = Column(Time)               # Giờ đóng cửa
     max_capacity = Column(Integer, default=50) # Số khách tối đa
     created_at = Column(DateTime, server_default=func.now())
-
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     # Relationship: 1 nhà hàng có nhiều booking
     bookings = relationship("Booking", back_populates="restaurant")
 

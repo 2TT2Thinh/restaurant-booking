@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession  
 from app.models.user import User
 from app.core.security import verify_password, create_access_token
 from fastapi import HTTPException, status
@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.core.security import getpassword_hash
 # check login (nếu email, password và tài khoán còn hoạt động không đúng thì trả về user, ngược lại trả về None)
-async def authenticate_user(db: Session, email: str, password: str):
+async def authenticate_user(db: AsyncSession, email: str, password: str):
     result = await db.execute(select(User).filter(User.email == email))
     user = result.scalars().first()
     if not user:

@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 
 class UserBase(BaseModel):
     email: Optional[EmailStr] = None
@@ -15,6 +15,12 @@ class UserUpdate(BaseModel):
 class PasswordChange(BaseModel):
     current_password: str
     new_password: str
+    @field_validator('new_password')
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError('Mật khẩu phải có ít nhất 8 ký tự')
+        return v
 
 class UserRead(UserBase):
     id: int

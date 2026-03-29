@@ -5,7 +5,7 @@ from app.core.config import settings
 # Sử dụng giá trị từ file .env thông qua settings
 engine = create_async_engine(
     settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"), 
-    echo=True,
+    echo=settings.ENVIRONMENT == "development",
     future=True
 )
 

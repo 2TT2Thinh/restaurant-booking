@@ -5,13 +5,14 @@ from app.api.v1.endpoints.bookings import router as booking_router
 from app.api.v1.endpoints.user import router as user_router
 from app.api.v1.endpoints.restaurants import router as restaurant_router  # THÊM
 from app.api.v1.endpoints.admin import router as admin_router
+from app.core.config import settings
 app = FastAPI(title="Restaurant Booking API")
 
 # MIDDLEWARE phải đặt TRƯỚC include_router
 app.add_middleware(
     CORSMiddleware,
     #allow_origins=["http://localhost:5173"],
-    allow_origins=["*"],  
+    allow_origins=settings.ALLOWED_ORIGINS,  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

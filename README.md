@@ -204,47 +204,43 @@ Hoặc dùng pgAdmin 4 → Tools → Query Tool → chạy lệnh trên.
 
 ```
 restaurant-booking/
-├── backend/
-│   ├── app/
-│   │   ├── api/v1/endpoints/
-│   │   │   |  ├── auth.py          # Đăng ký / Đăng nhập
-│   │   │   |  ├── users.py         # Profile, đổi mật khẩu
-│   │   │   |  ├── bookings.py      # Đặt bàn CRUD + stats
-│   │   │   |  ├── restaurants.py   # CRUD nhà hàng
-│   │   │   |  └── admin.py         # Admin endpoints
-|   |   |   |
-|   |   |   ├──deps.py
-│   │   ├── core/
-│   │   │   ├── config.py        # Pydantic settings
-│   │   │   ├── security.py      # JWT, password hash
-│   │   │   
-│   │   ├── models/              # SQLAlchemy models
-│   │   ├── schemas/             # Pydantic schemas
-│   │   ├── crud/                # Database operations
-│   │   ├── services/            # Business logic
-│   │   └── main.py
-│   ├── alembic/                 # Migration files
-│   ├── .env                     # Local config (không commit)
-│   ├── alembic.ini
-│   ├── requirements.txt
-│   └── start.sh                 # Script deploy Render
+├── backend/ # FastAPI Backend
+│ ├── alembic/ # Database migrations
+│ ├── app/
+│ │ ├── api/v1/endpoints/ # API endpoints
+│ │ │ ├── auth.py
+│ │ │ ├── bookings.py
+│ │ │ ├── chatbot.py
+│ │ │ ├── recommendations.py
+│ │ │ ├── restaurants.py
+│ │ │ └── user.py
+│ │ ├── core/ # Config & security
+│ │ ├── crud/ # CRUD operations
+│ │ ├── models/ # SQLAlchemy models
+│ │ ├── schemas/ # Pydantic schemas
+│ │ └── services/ # Business logic
+│ │ ├── auth_service.py
+│ │ ├── chatbot_service.py
+│ │ ├── recommendation_service.py
+│ │ └── smart_booking_service.py
+│ ├── requirements.txt
+│ └── .env
 │
-└── frontend/
-    ├── src/
-    │   ├── api/axios.js          # Axios + interceptor
-    │   ├── router/index.js       # Routes + guard
-    │   ├── services/
-    │   │   └── auth.service.js
-    │   └── views/
-    │       ├── auth/             # Login, Register
-    │       ├── booking/          # Dashboard, Create, Edit
-    │       ├── home/             # Landing page
-    │       ├── user/             # Profile
-    │       └── admin/            # Admin panel
-    ├── .env                      # Local config (không commit)
-    ├── .env.production           # Production config
-    ├── vercel.json               # Deploy config
-    └── package.json
+└── frontend/ # Vue 3 Frontend
+├── src/
+│ ├── api/ # API calls
+│ ├── components/ # Vue components
+│ ├── router/ # Vue Router
+│ ├── services/ # Service layer
+│ ├── stores/ # Pinia stores
+│ └── views/ # Page views
+│ ├── admin/ # Admin pages
+│ ├── auth/ # Login/Register
+│ ├── booking/ # Booking pages
+│ ├── home/ # Home page
+│ └── user/ # User profile
+├── package.json
+└── vite.config.js
 ```
 
 ---

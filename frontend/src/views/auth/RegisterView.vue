@@ -208,7 +208,7 @@ const rules = {
   minLength:       (v) => v?.length >= 8                           || 'At least 8 characters.',
   hasUppercase:    (v) => /[A-Z]/.test(v)                          || 'At least one uppercase letter (A-Z).',
   hasNumber:       (v) => /[0-9]/.test(v)                          || 'At least one number (0-9).',
-  hasSpecial:      (v) => /[!@#$%^&*(),.?":{}|<>]/.test(v)        || 'At least one special character (!@#...).',
+  // hasSpecial:      (v) => /[!@#$%^&*(),.?":{}|<>]/.test(v)        || 'At least one special character (!@#...).',
   confirmMatch:    (v) => v === form.value.password                || 'Passwords do not match.',
 };
 
@@ -222,7 +222,7 @@ const passwordHints = computed(() => [
   { label: '8+ characters',    passed: form.value.password.length >= 8 },
   { label: 'Uppercase (A-Z)', passed: /[A-Z]/.test(form.value.password) },
   { label: 'Number (0-9)',    passed: /[0-9]/.test(form.value.password) },
-  { label: 'Special (!@#…)',  passed: /[!@#$%^&*(),.?":{}|<>]/.test(form.value.password) },
+  
 ]);
 
 // ── Password match ────────────────────────────────────────────────

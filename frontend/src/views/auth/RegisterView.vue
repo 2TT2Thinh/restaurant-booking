@@ -108,7 +108,7 @@
                       color="primary"
                       :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
                       @click:append-inner="showPassword = !showPassword"
-                      :rules="[rules.required, rules.minLength, rules.hasUppercase, rules.hasNumber, rules.hasSpecial]"
+                      :rules="[rules.required, rules.minLength, rules.hasUppercase, rules.hasNumber]"
                     ></v-text-field>
                   </v-col>
 
@@ -180,16 +180,18 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
-import { authService } from '@/services/auth.service';
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
-const router = useRouter();
-const formRef = ref(null);
-const loading = ref(false);
-const errorMessage = ref('');
-const successMessage = ref('');
-const showPassword = ref(false);
+const router = useRouter()
+const authStore = useAuthStore()
+
+const formRef = ref(null)
+const loading = ref(false)
+const errorMessage = ref('')
+const successMessage = ref('')
+const showPassword = ref(false)
 
 const form = ref({
   full_name: '',
@@ -197,68 +199,74 @@ const form = ref({
   phone: '',
   password: '',
   confirmPassword: ''
-});
+})
 
-// ── Validation rules ──────────────────────────────────────────────
+// Validation rules
 const rules = {
-  required:        (v) => !!v?.trim()                              || 'This field is required.',
-  email:           (v) => /.+@.+\..+/.test(v)                     || 'Please enter a valid email.',
-  phoneOnlyDigits: (v) => /^\d+$/.test(v)                         || 'Phone number must contain digits only.',
-  phoneLength:     (v) => v?.length === 10                         || 'Phone number must be exactly 10 digits.',
-  minLength:       (v) => v?.length >= 8                           || 'At least 8 characters.',
-  hasUppercase:    (v) => /[A-Z]/.test(v)                          || 'At least one uppercase letter (A-Z).',
-  hasNumber:       (v) => /[0-9]/.test(v)                          || 'At least one number (0-9).',
-  // hasSpecial:      (v) => /[!@#$%^&*(),.?":{}|<>]/.test(v)        || 'At least one special character (!@#...).',
-  confirmMatch:    (v) => v === form.value.password                || 'Passwords do not match.',
-};
+  required: (v) => !!v?.trim() || 'This field is required.',
+  email: (v) => /.+@.+\..+/.test(v) || 'Please enter a valid email.',
+  phoneOnlyDigits: (v) => /^\d+$/.test(v) || 'Phone number must contain digits only.',
+  phoneLength: (v) => v?.length === 10 || 'Phone number must be exactly 10 digits.',
+  minLength: (v) => v?.length >= 8 || 'At least 8 characters.',
+  hasUppercase: (v) => /[A-Z]/.test(v) || 'At least one uppercase letter (A-Z).',
+  hasNumber: (v) => /[0-9]/.test(v) || 'At least one number (0-9).',
+  confirmMatch: (v) => v === form.value.password || 'Passwords do not match.',
+}
 
-// ── Chặn nhập ký tự không phải số ở Phone ────────────────────────
+// Chặn nhập ký tự không phải số ở Phone
 const allowOnlyDigits = (e) => {
-  if (!/[0-9]/.test(e.key)) e.preventDefault();
-};
+  if (!/[0-9]/.test(e.key)) e.preventDefault()
+}
 
-// ── Password strength chips ───────────────────────────────────────
+// Password strength chips
 const passwordHints = computed(() => [
-  { label: '8+ characters',    passed: form.value.password.length >= 8 },
+  { label: '8+ characters', passed: form.value.password.length >= 8 },
   { label: 'Uppercase (A-Z)', passed: /[A-Z]/.test(form.value.password) },
-  { label: 'Number (0-9)',    passed: /[0-9]/.test(form.value.password) },
-  
-]);
+  { label: 'Number (0-9)', passed: /[0-9]/.test(form.value.password) },
+])
 
-// ── Password match ────────────────────────────────────────────────
+// Password match
 const passwordMatch = computed(() =>
   form.value.password.length > 0 && form.value.password === form.value.confirmPassword
-);
+)
 
-// ── Submit ────────────────────────────────────────────────────────
+// Register handler - FIXED: sử dụng authStore.register để tự động login
 const handleRegister = async () => {
-  const { valid } = await formRef.value.validate();
-  if (!valid) return;
+  const { valid } = await formRef.value.validate()
+  if (!valid) return
 
-  loading.value = true;
-  errorMessage.value = '';
-  successMessage.value = '';
+  loading.value = true
+  errorMessage.value = ''
+  successMessage.value = ''
 
   try {
-    await authService.register({
+    // ✅ Dùng authStore.register thay vì authService.register
+    // authStore.register sẽ tự động login sau khi register thành công
+    await authStore.register({
       full_name: form.value.full_name.trim(),
-      email:     form.value.email.trim(),
-      phone:     form.value.phone.trim(),
-      password:  form.value.password,
-    });
-
-    successMessage.value = 'Account created successfully! Redirecting to login…';
-    setTimeout(() => router.push('/login'), 1500);
+      email: form.value.email.trim(),
+      phone: form.value.phone.trim(),
+      password: form.value.password,
+    })
+    
+    successMessage.value = 'Account created successfully! Redirecting to dashboard…'
+    
+    // Redirect đến dashboard sau khi đã tự động login
+    setTimeout(() => {
+      router.push(authStore.isAdmin ? '/admin' : '/dashboard')
+    }, 1500)
+    
   } catch (error) {
-    errorMessage.value =
-      error.response?.data?.detail || 'Registration failed. Please try again.';
-    // Clear password khi lỗi
-    form.value.password = '';
-    form.value.confirmPassword = '';
+    console.error('Register error:', error)
+    // FIX: Phase 4 error envelope is { error: { code, message } }
+    const errBody = error.response?.data?.error
+    errorMessage.value = errBody?.message || 'Registration failed. Please try again.'
+    form.value.password = ''
+    form.value.confirmPassword = ''
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 </script>
 
 <style scoped>

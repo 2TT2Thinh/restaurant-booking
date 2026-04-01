@@ -211,42 +211,55 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import apiClient from '@/api/axios'
 
-const router    = useRouter()
+const router = useRouter()
 const authStore = useAuthStore()
 
-const profileFormRef  = ref(null)
+const profileFormRef = ref(null)
 const passwordFormRef = ref(null)
-const loading         = ref(false)
+const loading = ref(false)
 const passwordLoading = ref(false)
-const profileError    = ref('')
-const passwordError   = ref('')
-const snackbar        = ref({ show: false, message: '', color: 'success' })
+const profileError = ref('')
+const passwordError = ref('')
+const snackbar = ref({ show: false, message: '', color: 'success' })
 
-// Lấy dữ liệu từ Store — không cần gọi API lại
+// Khởi tạo user từ authStore.user (đã có từ login)
 const user = ref({
-  full_name:   authStore.user?.full_name  || '',
-  phone:       authStore.user?.phone      || '',
-  email:       authStore.user?.email      || '',
+  full_name: authStore.user?.full_name || '',
+  phone: authStore.user?.phone || '',
+  email: authStore.user?.email || '',
   joined_date: authStore.user?.created_at || '',
 })
+
+// Watch authStore.user để cập nhật user khi store thay đổi
+watch(() => authStore.user, (newUser) => {
+  console.log('User profile watch triggered:', newUser)
+  if (newUser) {
+    user.value = {
+      full_name: newUser.full_name || '',
+      phone: newUser.phone || '',
+      email: newUser.email || '',
+      joined_date: newUser.created_at || '',
+    }
+  }
+}, { immediate: true, deep: true })
 
 const stats = ref({ total: 0, confirmed: 0, cancelled: 0, pending: 0, expired: 0 })
 const passwords = ref({ current: '', new: '', confirm: '' })
 
-// ── Validation rules ──────────────────────────────────────────────
+// Validation rules
 const rules = {
-  required:    (v) => !!v?.trim()                             || 'This field is required.',
-  phone:       (v) => !v || /^\d{10}$/.test(v)               || 'Phone must be exactly 10 digits.',
-  minLength:   (v) => v?.length >= 8                          || 'At least 8 characters.',
-  hasUppercase:(v) => /[A-Z]/.test(v)                         || 'At least one uppercase letter.',
-  hasNumber:   (v) => /[0-9]/.test(v)                         || 'At least one number.',
-  hasSpecial:  (v) => /[!@#$%^&*(),.?":{}|<>]/.test(v)       || 'At least one special character.',
-  confirmMatch:(v) => v === passwords.value.new               || 'Passwords do not match.',
+  required: (v) => !!v?.trim() || 'This field is required.',
+  phone: (v) => !v || /^\d{10}$/.test(v) || 'Phone must be exactly 10 digits.',
+  minLength: (v) => v?.length >= 8 || 'At least 8 characters.',
+  hasUppercase: (v) => /[A-Z]/.test(v) || 'At least one uppercase letter.',
+  hasNumber: (v) => /[0-9]/.test(v) || 'At least one number.',
+  hasSpecial: (v) => /[!@#$%^&*(),.?":{}|<>]/.test(v) || 'At least one special character.',
+  confirmMatch: (v) => v === passwords.value.new || 'Passwords do not match.',
 }
 
 // Phone chỉ cho nhập số
@@ -254,7 +267,7 @@ const allowOnlyDigits = (e) => {
   if (!/[0-9]/.test(e.key)) e.preventDefault()
 }
 
-// ── Helpers ───────────────────────────────────────────────────────
+// Helpers
 const showSnackbar = (message, color = 'success') => {
   snackbar.value = { show: true, message, color }
 }
@@ -269,23 +282,23 @@ const handleLogout = () => {
   router.push('/login')
 }
 
-// ── Fetch stats ───────────────────────────────────────────────────
+// Fetch stats - stats endpoint returns plain object, no envelope
 const fetchStats = async () => {
   try {
     const res = await apiClient.get('/users/me/stats')
     stats.value = {
-      total:     res.data.total     || 0,
+      total: res.data.total || 0,
       confirmed: res.data.confirmed || 0,
       cancelled: res.data.cancelled || 0,
-      pending:   res.data.pending   || 0,
-      expired:   res.data.expired   || 0,
+      pending: res.data.pending || 0,
+      expired: res.data.expired || 0,
     }
   } catch (err) {
     console.error('Stats error:', err)
   }
 }
 
-// ── Save profile ──────────────────────────────────────────────────
+// Save profile - FIXED error handling with Phase 4 envelope
 const saveChanges = async () => {
   const { valid } = await profileFormRef.value.validate()
   if (!valid) return
@@ -295,7 +308,7 @@ const saveChanges = async () => {
   try {
     await apiClient.patch('/users/me', {
       full_name: user.value.full_name.trim(),
-      phone:     user.value.phone.trim(),
+      phone: user.value.phone.trim(),
     })
 
     // Sync lại Store để navbar và các nơi khác cập nhật tên mới
@@ -303,13 +316,15 @@ const saveChanges = async () => {
 
     showSnackbar('Profile updated successfully.')
   } catch (err) {
-    profileError.value = err.response?.data?.detail || 'Failed to update profile.'
+    // Phase 4 error format - read from error.error
+    const errBody = err.response?.data?.error
+    profileError.value = errBody?.message || 'Failed to update profile.'
   } finally {
     loading.value = false
   }
 }
 
-// ── Change password ───────────────────────────────────────────────
+// Change password - FIXED error handling with Phase 4 envelope
 const updatePassword = async () => {
   const { valid } = await passwordFormRef.value.validate()
   if (!valid) return
@@ -319,23 +334,23 @@ const updatePassword = async () => {
   try {
     await apiClient.post('/users/me/change-password', {
       current_password: passwords.value.current,
-      new_password:     passwords.value.new,
+      new_password: passwords.value.new,
     })
     showSnackbar('Password updated successfully.')
     passwords.value = { current: '', new: '', confirm: '' }
-    passwordFormRef.value.reset()
+    passwordFormRef.value?.reset()
   } catch (err) {
-    const msg = err.response?.data?.detail
-    passwordError.value = typeof msg === 'string' ? msg : 'Incorrect current password.'
+    // Phase 4 error format
+    const errBody = err.response?.data?.error
+    passwordError.value = errBody?.message || 'Incorrect current password.'
   } finally {
     passwordLoading.value = false
   }
 }
 
-// ── Lifecycle ─────────────────────────────────────────────────────
+// Lifecycle
 onMounted(async () => {
-  // Không cần fetch /users/me lại — Store đã có
-  // Chỉ fetch stats
+  console.log('UserProfile mounted, authStore.user:', authStore.user)
   await fetchStats()
 })
 </script>

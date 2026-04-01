@@ -94,7 +94,7 @@
         <!-- FILTER + SEARCH -->
         <v-row class="mb-4 align-center">
           <v-col cols="12" md="6">
-            <v-tabs v-model="activeTab" color="primary" align-tabs="start" @update:model-value="fetchBookings">
+            <v-tabs v-model="activeTab" color="primary" align-tabs="start" @update:model-value="() => fetchBookings(true)">
               <v-tab value="all" class="text-none font-weight-bold">
                 All
                 <v-chip size="x-small" variant="tonal" class="ml-2">{{ stats.total }}</v-chip>
@@ -188,8 +188,14 @@
           </v-table>
         </v-card>
 
+        <!-- PAGINATION INFO -->
         <div class="d-flex justify-space-between align-center mt-6">
-          <p class="text-caption text-medium-emphasis">Showing {{ bookings.length }} bookings</p>
+          <p class="text-caption text-medium-emphasis">
+            Showing {{ bookings.length }} of {{ meta.total }} bookings
+            <v-btn v-if="meta.has_next" variant="text" size="small" @click="loadMore">
+              Load more
+            </v-btn>
+          </p>
         </div>
 
       </v-col>
@@ -232,27 +238,32 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import apiClient from '@/api/axios'
 
-const router    = useRouter()
+const router = useRouter()
 const authStore = useAuthStore()
 
+// State
 const activeTab = ref('all')
-const search    = ref('')
-const loading   = ref(false)
-const bookings  = ref([])
-const stats     = ref({ total: 0, pending: 0, confirmed: 0, cancelled: 0, expired: 0 })
-const snackbar  = ref({ show: false, message: '', color: 'success' })
+const search = ref('')
+const loading = ref(false)
+const bookings = ref([])
+const stats = ref({ total: 0, pending: 0, confirmed: 0, cancelled: 0, expired: 0 })
+const snackbar = ref({ show: false, message: '', color: 'success' })
 const deleteDialog = ref({ show: false, loading: false, bookingId: null })
+
+// Pagination state
+const meta = ref({ total: 0, has_next: false, page: 1, pages: 1 })
+const currentPage = ref(1)
 
 let searchTimeout = null
 
-// ── Avatar letter lấy từ Store ────────────────────────────────────
+// Avatar letter
 const avatarLetter = computed(() => {
-  const name  = authStore.user?.full_name
+  const name = authStore.user?.full_name
   const email = authStore.user?.email
   return (name || email || 'U').charAt(0).toUpperCase()
 })
 
-// ── Helpers ───────────────────────────────────────────────────────
+// Helpers
 const showSnackbar = (message, color = 'success') => {
   snackbar.value = { show: true, message, color }
 }
@@ -264,9 +275,9 @@ const getStatusColor = (status, date, time) => {
   }
   switch (status) {
     case 'confirmed': return 'success'
-    case 'pending':   return 'warning'
+    case 'pending': return 'warning'
     case 'cancelled': return 'error'
-    default:          return 'grey'
+    default: return 'grey'
   }
 }
 
@@ -278,7 +289,7 @@ const getStatusLabel = (status, date, time) => {
   return status
 }
 
-// ── API calls ─────────────────────────────────────────────────────
+// API calls
 const fetchStats = async () => {
   try {
     const res = await apiClient.get('/bookings/stats')
@@ -288,34 +299,64 @@ const fetchStats = async () => {
   }
 }
 
-const fetchBookings = async () => {
+// Fetch bookings - with proper unwrapping and pagination
+const fetchBookings = async (resetPage = true) => {
+  if (resetPage) {
+    currentPage.value = 1
+    bookings.value = []
+  }
+  
   loading.value = true
   try {
-    const params = {}
-    if (search.value.trim())      params.search = search.value.trim()
+    const params = {
+      page: currentPage.value,
+      limit: 10
+    }
+    
+    if (search.value.trim()) params.search = search.value.trim()
     if (activeTab.value !== 'all') params.status = activeTab.value
 
     const res = await apiClient.get('/bookings/me', { params })
-    bookings.value = res.data
+    
+    // Unwrap array from envelope
+    const newBookings = res.data.data || []
+    const metaData = res.data.meta || { total: 0, has_next: false }
+    
+    if (resetPage) {
+      bookings.value = newBookings
+    } else {
+      bookings.value = [...bookings.value, ...newBookings]
+    }
+    
+    // Update meta info
+    meta.value = metaData
   } catch (err) {
     showSnackbar('Failed to load bookings.', 'error')
+    console.error('Fetch bookings error:', err)
   } finally {
     loading.value = false
   }
 }
 
-// Debounce search 400ms
-const onSearch = () => {
-  clearTimeout(searchTimeout)
-  searchTimeout = setTimeout(() => fetchBookings(), 400)
+// Load more - increment page and fetch
+const loadMore = () => {
+  if (meta.value.has_next && !loading.value) {
+    currentPage.value++
+    fetchBookings(false)
+  }
 }
 
-// Mở dialog xác nhận xóa
+// Debounce search
+const onSearch = () => {
+  clearTimeout(searchTimeout)
+  searchTimeout = setTimeout(() => fetchBookings(true), 400)
+}
+
+// Delete functions
 const confirmDelete = (bookingId) => {
   deleteDialog.value = { show: true, loading: false, bookingId }
 }
 
-// Thực hiện xóa sau khi user xác nhận trong dialog
 const handleDelete = async () => {
   deleteDialog.value.loading = true
   try {
@@ -324,22 +365,23 @@ const handleDelete = async () => {
     await fetchStats()
     showSnackbar('Booking deleted successfully.')
   } catch (err) {
-    showSnackbar(err.response?.data?.detail || 'Failed to delete booking.', 'error')
+    // Phase 4 error format
+    const errBody = err.response?.data?.error
+    showSnackbar(errBody?.message || 'Failed to delete booking.', 'error')
   } finally {
     deleteDialog.value = { show: false, loading: false, bookingId: null }
   }
 }
 
-// Logout qua Store — không tự xóa localStorage thủ công
+// Logout
 const handleLogout = () => {
   authStore.logout()
   router.push('/login')
 }
 
-// ── Lifecycle ─────────────────────────────────────────────────────
+// Lifecycle
 onMounted(async () => {
-  // Không cần kiểm tra token ở đây — router guard đã lo
-  await Promise.all([fetchStats(), fetchBookings()])
+  await Promise.all([fetchStats(), fetchBookings(true)])
 })
 </script>
 

@@ -304,30 +304,30 @@ import apiClient from '@/api/axios'
 
 const router = useRouter()
 
-const formRef            = ref(null)
-const loading            = ref(false)
+const formRef = ref(null)
+const loading = ref(false)
 const loadingRestaurants = ref(false)
-const errorMessage       = ref('')
-const restaurantError    = ref(false)   // lỗi chưa chọn nhà hàng
-const restaurants        = ref([])
+const errorMessage = ref('')
+const restaurantError = ref(false)
+const restaurants = ref([])
 const selectedRestaurant = ref(null)
-const restaurantSearch   = ref('')
-const snackbar           = ref({ show: false, message: '', color: 'success' })
-const today              = new Date().toISOString().split('T')[0]
+const restaurantSearch = ref('')
+const snackbar = ref({ show: false, message: '', color: 'success' })
+const today = new Date().toISOString().split('T')[0]
 
 const form = ref({
-  restaurant_id:    null,
-  booking_date:     today,
-  booking_time:     '19:00',
+  restaurant_id: null,
+  booking_date: today,
+  booking_time: '19:00',
   number_of_guests: 2,
-  special_notes:    ''
+  special_notes: ''
 })
 
 let searchTimeout = null
 
-// ── Validation rules ──────────────────────────────────────────────
+// Validation rules
 const rules = {
-  required:  (v) => !!v || 'This field is required.',
+  required: (v) => !!v || 'This field is required.',
   minGuests: (v) => v >= 1 || 'At least 1 guest required.',
   maxGuests: (v) => {
     const max = selectedRestaurant.value?.max_capacity
@@ -336,7 +336,7 @@ const rules = {
   },
 }
 
-// ── Helpers ───────────────────────────────────────────────────────
+// Helpers
 const showSnackbar = (message, color = 'success') => {
   snackbar.value = { show: true, message, color }
 }
@@ -344,17 +344,17 @@ const showSnackbar = (message, color = 'success') => {
 const selectRestaurant = (r) => {
   form.value.restaurant_id = r.id
   selectedRestaurant.value = r
-  restaurantError.value = false  // xóa lỗi khi đã chọn
+  restaurantError.value = false
 }
 
-// ── Fetch restaurants ─────────────────────────────────────────────
+// Fetch restaurants - FIXED: unwrap res.data.data
 const fetchRestaurants = async (search = '') => {
   loadingRestaurants.value = true
   try {
     const params = {}
     if (search.trim()) params.search = search.trim()
     const res = await apiClient.get('/restaurants/', { params })
-    restaurants.value = res.data
+    restaurants.value = res.data.data  // Unwrap array from envelope
   } catch (err) {
     console.error('Failed to load restaurants:', err)
   } finally {
@@ -367,15 +367,15 @@ const onRestaurantSearch = () => {
   searchTimeout = setTimeout(() => fetchRestaurants(restaurantSearch.value), 400)
 }
 
-// ── Create booking ────────────────────────────────────────────────
+// Create booking - FIXED: error handling with Phase 4 envelope
 const handleCreate = async () => {
-  // Kiểm tra nhà hàng (không dùng được v-rules vì là list item)
+  // Check restaurant selection
   if (!form.value.restaurant_id) {
     restaurantError.value = true
     return
   }
 
-  // Validate các field còn lại
+  // Validate other fields
   const { valid } = await formRef.value.validate()
   if (!valid) return
 
@@ -383,25 +383,25 @@ const handleCreate = async () => {
   errorMessage.value = ''
   try {
     await apiClient.post('/bookings/', {
-      restaurant_id:    form.value.restaurant_id,
-      booking_date:     form.value.booking_date,
-      booking_time:     form.value.booking_time + ':00',
+      restaurant_id: form.value.restaurant_id,
+      booking_date: form.value.booking_date,
+      booking_time: form.value.booking_time + ':00',
       number_of_guests: form.value.number_of_guests,
-      special_notes:    form.value.special_notes || null,
+      special_notes: form.value.special_notes || null,
     })
     showSnackbar('Booking created successfully!')
     setTimeout(() => router.push('/dashboard'), 1000)
   } catch (err) {
-    const detail = err.response?.data?.detail
-    errorMessage.value = typeof detail === 'string' ? detail : 'Failed to create booking. Please try again.'
+    // Phase 4 error format - read from error.error
+    const errBody = err.response?.data?.error
+    errorMessage.value = errBody?.message || 'Failed to create booking. Please try again.'
   } finally {
     loading.value = false
   }
 }
 
-// ── Lifecycle ─────────────────────────────────────────────────────
+// Lifecycle
 onMounted(async () => {
-  // Không cần check token — router guard đã lo
   await fetchRestaurants()
 })
 </script>

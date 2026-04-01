@@ -73,6 +73,7 @@
           hide-details rounded="lg"
           bg-color="grey-lighten-4"
           style="max-width: 280px;"
+          @update:model-value="fetchUsers"
         ></v-text-field>
       </div>
 
@@ -188,8 +189,10 @@
     <v-dialog v-model="confirmDialog.show" max-width="420">
       <v-card rounded="xl" class="pa-6">
         <div class="text-center mb-6">
-          <v-avatar color="indigo-lighten-4" size="64" class="mb-4">
-            <v-icon color="indigo-darken-3" size="32">mdi-shield-account-outline</v-icon>
+          <v-avatar :color="confirmDialog.color === 'success' ? 'green-lighten-4' : 'indigo-lighten-4'" size="64" class="mb-4">
+            <v-icon :color="confirmDialog.color === 'success' ? 'green-darken-3' : 'indigo-darken-3'" size="32">
+              {{ confirmDialog.color === 'success' ? 'mdi-account-check' : 'mdi-shield-account-outline' }}
+            </v-icon>
           </v-avatar>
           <h3 class="text-h6 font-weight-bold text-dark mb-2">{{ confirmDialog.title }}</h3>
           <p class="text-body-2 text-grey-darken-1">{{ confirmDialog.message }}</p>
@@ -213,12 +216,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import apiClient from '@/api/axios'
 
-const users    = ref([])
-const loading  = ref(false)
-const search   = ref('')
+const users = ref([])
+const loading = ref(false)
+const search = ref('')
 const activeTab = ref('all')
 const snackbar = ref({ show: false, message: '', color: 'success' })
 const confirmDialog = ref({
@@ -227,18 +230,19 @@ const confirmDialog = ref({
   action: () => {}
 })
 
-// ── Computed ──────────────────────────────────────────────────────
-const activeCount   = computed(() => users.value.filter(u => u.is_active).length)
+// Computed stats
+const activeCount = computed(() => users.value.filter(u => u.is_active).length)
 const inactiveCount = computed(() => users.value.filter(u => !u.is_active).length)
-const adminCount    = computed(() => users.value.filter(u => u.role === 'admin').length)
+const adminCount = computed(() => users.value.filter(u => u.role === 'admin').length)
 const customerCount = computed(() => users.value.filter(u => u.role === 'customer').length)
 
 const userTabs = [
-  { label: 'All Users',      value: 'all' },
+  { label: 'All Users', value: 'all' },
   { label: 'Administrators', value: 'admin' },
-  { label: 'Customers',      value: 'customer' },
+  { label: 'Customers', value: 'customer' },
 ]
 
+// Filter users client-side (search + tab)
 const filteredUsers = computed(() =>
   users.value.filter(u => {
     const tabMatch = activeTab.value === 'all' || u.role === activeTab.value
@@ -249,7 +253,7 @@ const filteredUsers = computed(() =>
   })
 )
 
-// ── Helpers ───────────────────────────────────────────────────────
+// Helpers
 const showSnackbar = (message, color = 'success') => {
   snackbar.value = { show: true, message, color }
 }
@@ -261,21 +265,24 @@ const formatDate = (dateStr) => {
   })
 }
 
-// ── API ───────────────────────────────────────────────────────────
+// Fetch users - FIXED: unwrap envelope
 const fetchUsers = async () => {
   loading.value = true
   try {
     const params = { limit: 200 }
     if (search.value.trim()) params.search = search.value.trim()
     const res = await apiClient.get('/admin/users', { params })
-    users.value = res.data
+    // Unwrap { data: [...], meta: {...} } envelope
+    users.value = res.data.data || []
   } catch (err) {
+    console.error('Fetch users error:', err)
     showSnackbar('Failed to load users.', 'error')
   } finally {
     loading.value = false
   }
 }
 
+// Toggle user role - FIXED: error handling with Phase 4 envelope
 const toggleRole = (user) => {
   const newRole = user.role === 'admin' ? 'customer' : 'admin'
   confirmDialog.value = {
@@ -291,7 +298,9 @@ const toggleRole = (user) => {
         confirmDialog.value.show = false
         await fetchUsers()
       } catch (err) {
-        showSnackbar(err.response?.data?.detail || 'Failed to change role.', 'error')
+        // Phase 4 error envelope { error: { message } }
+        const errBody = err.response?.data?.error
+        showSnackbar(errBody?.message || 'Failed to change role.', 'error')
       } finally {
         confirmDialog.value.loading = false
       }
@@ -299,6 +308,7 @@ const toggleRole = (user) => {
   }
 }
 
+// Toggle user active status - FIXED: error handling with Phase 4 envelope
 const toggleActive = (user) => {
   const newActive = !user.is_active
   confirmDialog.value = {
@@ -316,7 +326,9 @@ const toggleActive = (user) => {
         confirmDialog.value.show = false
         await fetchUsers()
       } catch (err) {
-        showSnackbar(err.response?.data?.detail || 'Failed to update account.', 'error')
+        // Phase 4 error envelope { error: { message } }
+        const errBody = err.response?.data?.error
+        showSnackbar(errBody?.message || 'Failed to update account.', 'error')
       } finally {
         confirmDialog.value.loading = false
       }
@@ -324,7 +336,17 @@ const toggleActive = (user) => {
   }
 }
 
-onMounted(fetchUsers)
+// Debounce search
+let searchTimeout = null
+watch(search, () => {
+  clearTimeout(searchTimeout)
+  searchTimeout = setTimeout(() => fetchUsers(), 400)
+})
+
+// Lifecycle
+onMounted(() => {
+  fetchUsers()
+})
 </script>
 
 <style scoped>

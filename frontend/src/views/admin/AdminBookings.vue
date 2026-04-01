@@ -11,13 +11,15 @@
       </div>
     </div>
 
-    <!-- STATS BENTO -->
+    <!-- STATS BENTO - using adminStats from API -->
     <v-row class="mb-10">
       <v-col cols="12" md="4">
         <v-card variant="flat" rounded="xl" class="stat-card pa-8 overflow-hidden">
           <div class="text-caption font-weight-black text-grey mb-2"
             style="text-transform:uppercase; letter-spacing:0.1em;">Total Bookings</div>
-          <div class="text-h3 font-weight-black text-indigo-darken-3">{{ bookings.length }}</div>
+          <div class="text-h3 font-weight-black text-indigo-darken-3">
+            {{ adminStats.pending_bookings + adminStats.confirmed_bookings + adminStats.cancelled_bookings }}
+          </div>
           <v-icon class="sparkle-icon" color="indigo-lighten-4" size="80">mdi-trending-up</v-icon>
         </v-card>
       </v-col>
@@ -217,39 +219,34 @@
 import { ref, computed, onMounted } from 'vue'
 import apiClient from '@/api/axios'
 
-const bookings     = ref([])
-const loading      = ref(false)
-const search       = ref('')
+const bookings = ref([])
+const adminStats = ref({ pending_bookings: 0, confirmed_bookings: 0, cancelled_bookings: 0 })
+const loading = ref(false)
+const search = ref('')
 const activeStatus = ref('all')
 const deleteDialog = ref({ show: false, loading: false, booking: null })
-const snackbar     = ref({ show: false, message: '', color: 'success' })
-let searchTimeout  = null
+const snackbar = ref({ show: false, message: '', color: 'success' })
+let searchTimeout = null
 
-// ── Computed ──────────────────────────────────────────────────────
-const pendingCount   = computed(() => bookings.value.filter(b => b.status === 'pending').length)
-const confirmedCount = computed(() => bookings.value.filter(b => b.status === 'confirmed').length)
-const cancelledCount = computed(() => bookings.value.filter(b => b.status === 'cancelled').length)
+// Use real counts from /admin/stats — not client-side filter of partial page
+const pendingCount = computed(() => adminStats.value.pending_bookings)
+const confirmedCount = computed(() => adminStats.value.confirmed_bookings)
+const cancelledCount = computed(() => adminStats.value.cancelled_bookings)
 
 const statusTabs = computed(() => [
-  { label: 'All',       value: 'all',       count: bookings.value.length },
-  { label: 'Pending',   value: 'pending',   count: pendingCount.value },
+  { label: 'All', value: 'all', count: bookings.value.length },
+  { label: 'Pending', value: 'pending', count: pendingCount.value },
   { label: 'Confirmed', value: 'confirmed', count: confirmedCount.value },
   { label: 'Cancelled', value: 'cancelled', count: cancelledCount.value },
 ])
 
-// ── Helpers ───────────────────────────────────────────────────────
 const showSnackbar = (message, color = 'success') => {
   snackbar.value = { show: true, message, color }
 }
 
-const getStatusColor = (status) => {
-  switch (status) {
-    case 'confirmed': return 'success'
-    case 'pending':   return 'warning'
-    case 'cancelled': return 'error'
-    default:          return 'grey'
-  }
-}
+const getStatusColor = (status) => (
+  { confirmed: 'success', pending: 'warning', cancelled: 'error' }[status] || 'grey'
+)
 
 const confirmDelete = (booking) => {
   deleteDialog.value = { show: true, loading: false, booking }
@@ -260,17 +257,28 @@ const onSearch = () => {
   searchTimeout = setTimeout(() => fetchBookings(), 400)
 }
 
-// ── API ───────────────────────────────────────────────────────────
+const fetchAdminStats = async () => {
+  try {
+    const res = await apiClient.get('/admin/stats')
+    // /admin/stats returns plain object — no envelope
+    adminStats.value = res.data
+  } catch (err) {
+    console.error('Admin stats error:', err)
+  }
+}
+
 const fetchBookings = async () => {
   loading.value = true
   try {
     const params = { limit: 100 }
-    if (search.value.trim())       params.search = search.value.trim()
+    if (search.value.trim()) params.search = search.value.trim()
     if (activeStatus.value !== 'all') params.status = activeStatus.value
     const res = await apiClient.get('/admin/bookings', { params })
-    bookings.value = res.data
+    // Unwrap { data: [...], meta: {...} } envelope
+    bookings.value = res.data.data
   } catch (err) {
     showSnackbar('Failed to load bookings.', 'error')
+    console.error('Fetch bookings error:', err)
   } finally {
     loading.value = false
   }
@@ -280,11 +288,13 @@ const updateStatus = async (bookingId, status) => {
   try {
     await apiClient.patch(`/admin/bookings/${bookingId}`, { status })
     showSnackbar(status === 'confirmed' ? 'Booking confirmed.' : 'Booking cancelled.')
-    // Cập nhật local state — không fetch lại toàn bộ
     const booking = bookings.value.find(b => b.id === bookingId)
     if (booking) booking.status = status
+    await fetchAdminStats() // refresh real counts
   } catch (err) {
-    showSnackbar(err.response?.data?.detail || 'Failed to update status.', 'error')
+    // Phase 4 error envelope { error: { message } }
+    const errBody = err.response?.data?.error
+    showSnackbar(errBody?.message || 'Failed to update status.', 'error')
   }
 }
 
@@ -294,15 +304,18 @@ const deleteBooking = async () => {
     await apiClient.delete(`/admin/bookings/${deleteDialog.value.booking.id}`)
     showSnackbar('Booking deleted successfully.')
     deleteDialog.value.show = false
-    await fetchBookings()
+    await Promise.all([fetchBookings(), fetchAdminStats()])
   } catch (err) {
-    showSnackbar(err.response?.data?.detail || 'Failed to delete booking.', 'error')
+    const errBody = err.response?.data?.error
+    showSnackbar(errBody?.message || 'Failed to delete booking.', 'error')
   } finally {
     deleteDialog.value.loading = false
   }
 }
 
-onMounted(fetchBookings)
+onMounted(async () => {
+  await Promise.all([fetchBookings(), fetchAdminStats()])
+})
 </script>
 
 <style scoped>

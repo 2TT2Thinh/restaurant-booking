@@ -250,26 +250,26 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import apiClient from '@/api/axios'
 
-const route     = useRoute()
-const router    = useRouter()
+const route = useRoute()
+const router = useRouter()
 const bookingId = route.params.id
 
-const formRef      = ref(null)
-const loading      = ref(false)
+const formRef = ref(null)
+const loading = ref(false)
 const deleteLoading = ref(false)
-const pageLoading  = ref(true)
+const pageLoading = ref(true)
 const errorMessage = ref('')
-const booking      = ref(null)
+const booking = ref(null)
 const deleteDialog = ref(false)
-const snackbar     = ref({ show: false, message: '', color: 'success' })
-const today        = new Date().toISOString().split('T')[0]
+const snackbar = ref({ show: false, message: '', color: 'success' })
+const today = new Date().toISOString().split('T')[0]
 
 const form = ref({
-  booking_date:     '',
-  booking_time:     '',
+  booking_date: '',
+  booking_time: '',
   number_of_guests: 1,
-  special_notes:    '',
-  status:           'pending'
+  special_notes: '',
+  status: 'pending'
 })
 
 const statusItems = [
@@ -278,13 +278,13 @@ const statusItems = [
   { label: 'Cancelled', value: 'cancelled', color: 'error',   icon: 'mdi-close-circle-outline' },
 ]
 
-// ── Validation rules ──────────────────────────────────────────────
+// Validation rules
 const rules = {
-  required:  (v) => !!v || 'This field is required.',
+  required: (v) => !!v || 'This field is required.',
   minGuests: (v) => v >= 1 || 'At least 1 guest required.',
 }
 
-// ── Helpers ───────────────────────────────────────────────────────
+// Helpers
 const showSnackbar = (message, color = 'success') => {
   snackbar.value = { show: true, message, color }
 }
@@ -306,31 +306,41 @@ const formatDate = (dateStr) => {
   })
 }
 
-// ── Load booking theo ID thẳng từ API ────────────────────────────
+// Load booking - FIXED: fetch all bookings and find by ID (since no GET /bookings/{id} endpoint)
 onMounted(async () => {
   try {
-    // Gọi thẳng /bookings/me rồi tìm theo id
-    // (nếu backend có GET /bookings/{id} thì thay bằng apiClient.get(`/bookings/${bookingId}`))
+    console.log('Fetching all bookings to find ID:', bookingId)
     const res = await apiClient.get('/bookings/me')
-    const found = res.data.find(b => b.id == bookingId)
+    
+    // Unwrap envelope - res.data.data is the array
+    const bookingsList = res.data.data || []
+    console.log('Bookings list length:', bookingsList.length)
+    
+    const found = bookingsList.find(b => b.id == bookingId)
+    
     if (found) {
+      console.log('Booking found:', found)
       booking.value = found
       form.value = {
-        booking_date:     found.booking_date,
-        booking_time:     found.booking_time?.slice(0, 5), // HH:MM:SS → HH:MM
+        booking_date: found.booking_date,
+        booking_time: found.booking_time?.slice(0, 5), // HH:MM:SS → HH:MM
         number_of_guests: found.number_of_guests,
-        special_notes:    found.special_notes || '',
-        status:           found.status
+        special_notes: found.special_notes || '',
+        status: found.status
       }
+    } else {
+      console.error('Booking not found with ID:', bookingId)
+      errorMessage.value = 'Booking not found'
     }
   } catch (err) {
     console.error('Failed to load booking:', err)
+    errorMessage.value = 'Failed to load booking details.'
   } finally {
     pageLoading.value = false
   }
 })
 
-// ── Update booking ────────────────────────────────────────────────
+// Update booking - FIXED error handling
 const updateBooking = async () => {
   const { valid } = await formRef.value.validate()
   if (!valid) return
@@ -339,23 +349,24 @@ const updateBooking = async () => {
   errorMessage.value = ''
   try {
     await apiClient.patch(`/bookings/${bookingId}`, {
-      booking_date:     form.value.booking_date,
-      booking_time:     form.value.booking_time + ':00',
+      booking_date: form.value.booking_date,
+      booking_time: form.value.booking_time + ':00',
       number_of_guests: form.value.number_of_guests,
-      special_notes:    form.value.special_notes || null,
-      status:           form.value.status
+      special_notes: form.value.special_notes || null,
+      status: form.value.status
     })
     showSnackbar('Booking updated successfully.')
     setTimeout(() => router.push('/dashboard'), 1000)
   } catch (err) {
-    const detail = err.response?.data?.detail
-    errorMessage.value = typeof detail === 'string' ? detail : 'Failed to update booking. Please try again.'
+    // Phase 4 error format - read from error.error
+    const errBody = err.response?.data?.error
+    errorMessage.value = errBody?.message || 'Failed to update booking. Please try again.'
   } finally {
     loading.value = false
   }
 }
 
-// ── Delete booking ────────────────────────────────────────────────
+// Delete booking - FIXED error handling
 const handleDelete = async () => {
   deleteLoading.value = true
   try {
@@ -363,7 +374,9 @@ const handleDelete = async () => {
     showSnackbar('Booking deleted successfully.')
     setTimeout(() => router.push('/dashboard'), 1000)
   } catch (err) {
-    showSnackbar(err.response?.data?.detail || 'Failed to delete booking.', 'error')
+    // Phase 4 error format
+    const errBody = err.response?.data?.error
+    showSnackbar(errBody?.message || 'Failed to delete booking.', 'error')
     deleteDialog.value = false
   } finally {
     deleteLoading.value = false

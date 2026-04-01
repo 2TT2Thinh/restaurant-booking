@@ -132,26 +132,25 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
-const router    = useRouter()
+const router = useRouter()
 const authStore = useAuthStore()
 
-const formRef     = ref(null)
-const email       = ref('')
-const password    = ref('')
-const rememberMe  = ref(false)
+const formRef = ref(null)
+const email = ref('')
+const password = ref('')
+const rememberMe = ref(false)
 const showPassword = ref(false)
-const loading     = ref(false)
+const loading = ref(false)
 const errorMessage = ref('')
 
-// ── Validation rules ──────────────────────────────────────────────
+// Validation rules
 const rules = {
   required: (v) => !!v?.trim() || 'This field is required.',
-  email:    (v) => /.+@.+\..+/.test(v) || 'Please enter a valid email.',
+  email: (v) => /.+@.+\..+/.test(v) || 'Please enter a valid email.',
 }
 
-// ── Login handler ─────────────────────────────────────────────────
+// Login handler
 const handleLogin = async () => {
-  // Validate form trước
   const { valid } = await formRef.value.validate()
   if (!valid) return
 
@@ -159,29 +158,36 @@ const handleLogin = async () => {
   loading.value = true
 
   try {
-    // Gọi Store action thay vì authService trực tiếp
+    console.log('Starting login...')
     await authStore.login(email.value.trim(), password.value)
-
-    // Redirect dựa vào role từ Store (không đọc localStorage)
-    router.push(authStore.isAdmin ? '/admin' : '/dashboard')
-
+    
+    console.log('Login completed, user:', authStore.user)
+    console.log('isLoggedIn:', authStore.isLoggedIn)
+    console.log('isAdmin:', authStore.isAdmin)
+    
+    // Redirect sau khi login thành công
+    const targetPath = authStore.isAdmin ? '/admin' : '/dashboard'
+    console.log('Redirecting to:', targetPath)
+    
+    // Dùng router.push cho SPA experience
+    router.push(targetPath)
+    
   } catch (error) {
+    console.error('Login error:', error)
     const status = error.response?.status
-    const detail = error.response?.data?.detail
+    // FIX: Phase 4 error envelope is { error: { code, message } }
+    const errBody = error.response?.data?.error
 
     if (status === 401) {
       errorMessage.value = 'Incorrect email or password.'
     } else if (status === 400) {
-      errorMessage.value = typeof detail === 'string' ? detail : 'Invalid login credentials.'
+      errorMessage.value = errBody?.message || 'Invalid login credentials.'
     } else if (!error.response) {
       errorMessage.value = 'Cannot connect to server. Please try again.'
     } else {
-      errorMessage.value = 'Something went wrong. Please try again.'
+      errorMessage.value = errBody?.message || 'Something went wrong. Please try again.'
     }
-
-    // Clear password khi sai
     password.value = ''
-
   } finally {
     loading.value = false
   }

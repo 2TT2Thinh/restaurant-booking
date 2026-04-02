@@ -198,6 +198,9 @@
           </p>
         </div>
 
+        <!-- CHATBOT -->
+        <Chatbot class="mt-8" />
+
       </v-col>
     </v-row>
 
@@ -237,6 +240,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import apiClient from '@/api/axios'
+import Chatbot from '@/components/Chatbot.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -299,36 +303,28 @@ const fetchStats = async () => {
   }
 }
 
-// Fetch bookings - with proper unwrapping and pagination
 const fetchBookings = async (resetPage = true) => {
   if (resetPage) {
     currentPage.value = 1
     bookings.value = []
   }
-  
+
   loading.value = true
   try {
-    const params = {
-      page: currentPage.value,
-      limit: 10
-    }
-    
+    const params = { page: currentPage.value, limit: 10 }
     if (search.value.trim()) params.search = search.value.trim()
     if (activeTab.value !== 'all') params.status = activeTab.value
 
     const res = await apiClient.get('/bookings/me', { params })
-    
-    // Unwrap array from envelope
     const newBookings = res.data.data || []
     const metaData = res.data.meta || { total: 0, has_next: false }
-    
+
     if (resetPage) {
       bookings.value = newBookings
     } else {
       bookings.value = [...bookings.value, ...newBookings]
     }
-    
-    // Update meta info
+
     meta.value = metaData
   } catch (err) {
     showSnackbar('Failed to load bookings.', 'error')
@@ -338,7 +334,6 @@ const fetchBookings = async (resetPage = true) => {
   }
 }
 
-// Load more - increment page and fetch
 const loadMore = () => {
   if (meta.value.has_next && !loading.value) {
     currentPage.value++
@@ -346,13 +341,11 @@ const loadMore = () => {
   }
 }
 
-// Debounce search
 const onSearch = () => {
   clearTimeout(searchTimeout)
   searchTimeout = setTimeout(() => fetchBookings(true), 400)
 }
 
-// Delete functions
 const confirmDelete = (bookingId) => {
   deleteDialog.value = { show: true, loading: false, bookingId }
 }
@@ -365,7 +358,6 @@ const handleDelete = async () => {
     await fetchStats()
     showSnackbar('Booking deleted successfully.')
   } catch (err) {
-    // Phase 4 error format
     const errBody = err.response?.data?.error
     showSnackbar(errBody?.message || 'Failed to delete booking.', 'error')
   } finally {
@@ -373,13 +365,11 @@ const handleDelete = async () => {
   }
 }
 
-// Logout
 const handleLogout = () => {
   authStore.logout()
   router.push('/login')
 }
 
-// Lifecycle
 onMounted(async () => {
   await Promise.all([fetchStats(), fetchBookings(true)])
 })

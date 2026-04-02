@@ -11,6 +11,7 @@ from app.models.booking import Booking
 from app.models.restaurant import Restaurant
 from app.schemas.booking import BookingRead, BookingUpdate
 from app.schemas.user import UserRead
+from app.schemas.response import DataResponse
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -69,7 +70,7 @@ async def get_admin_stats(
 
 # ==================== QUẢN LÝ BOOKING ====================
 
-@router.get("/bookings", response_model=List[BookingRead])
+@router.get("/bookings", response_model=DataResponse[List[BookingRead]])
 async def get_all_bookings(
     search: Optional[str] = None,
     status: Optional[str] = None,
@@ -99,7 +100,8 @@ async def get_all_bookings(
 
     query = query.order_by(Booking.created_at.desc()).offset(skip).limit(limit)
     result = await db.execute(query)
-    return result.scalars().all()
+    bookings = result.scalars().all()
+    return DataResponse.create(bookings)
 
 
 @router.patch("/bookings/{booking_id}", response_model=BookingRead)
@@ -151,7 +153,7 @@ async def admin_delete_booking(
 
 # ==================== QUẢN LÝ USER ====================
 
-@router.get("/users", response_model=List[UserRead])
+@router.get("/users", response_model=DataResponse[List[UserRead]])
 async def get_all_users(
     search: Optional[str] = None,
     is_active: Optional[bool] = None,
@@ -177,7 +179,8 @@ async def get_all_users(
 
     query = query.order_by(User.created_at.desc()).offset(skip).limit(limit)
     result = await db.execute(query)
-    return result.scalars().all()
+    users = result.scalars().all()
+    return DataResponse.create(users)
 
 
 @router.patch("/users/{user_id}", response_model=UserRead)

@@ -336,7 +336,7 @@ const fetchRestaurants = async () => {
     const params = {}
     if (search.value.trim()) params.search = search.value.trim()
     const res = await apiClient.get('/restaurants/', { params })
-    let data = res.data
+    let data = res.data.data || []  // Extract from PagedResponse wrapper
     if (filterCuisine.value && filterCuisine.value !== 'All Cuisines') {
       data = data.filter(r => r.cuisine_type === filterCuisine.value)
     }

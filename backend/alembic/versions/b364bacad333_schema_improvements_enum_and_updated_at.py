@@ -64,11 +64,11 @@ def upgrade() -> None:
     #))
  
     # ── 4. updated_at on restaurants ─────────────────────────────────────────
-    op.add_column('restaurants', sa.Column(
-        'updated_at', sa.DateTime(),
-        server_default=sa.text('now()'),
-        nullable=True
-    ))
+    #op.add_column('restaurants', sa.Column(
+     #   'updated_at', sa.DateTime(),
+      #  server_default=sa.text('now()'),
+       # nullable=True
+    #))
  
     # ── 5. Performance indexes ────────────────────────────────────────────────
     # Booking lookups by status (dashboard filter)

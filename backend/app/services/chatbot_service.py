@@ -3,6 +3,7 @@ import asyncio
 import logging
 from functools import partial
 from datetime import date, datetime
+import os
 from typing import Optional
 
 import httpx
@@ -423,6 +424,16 @@ async def process_chat_message(
     """
     Xử lý tin nhắn chat - MAIN FUNCTION
     """
+    if os.getenv("DISABLE_CHATBOT_AI", "false").lower() == "true":
+        return {
+            "data": "🤖 Tính năng chat AI tạm thời đang bảo trì. Bạn vẫn có thể:\n"
+                    "• Gợi ý nhà hàng (gõ 'gợi ý')\n"
+                    "• Kiểm tra đặt bàn (gõ 'đặt bàn của tôi')\n"
+                    "• Xem danh sách nhà hàng (gõ 'nhà hàng')\n\n"
+                    "Cảm ơn bạn đã thông cảm!",
+            "intent": "fallback",
+            "processing_time_ms": 0
+        }
     logger.info(f"=" * 50)
     logger.info(f"Processing message for user_id={user_id}, token exists={bool(token)}")
     

@@ -54,23 +54,27 @@ async def register(
 
 # app/api/v1/endpoints/auth.py
 
-# ========== TẠO ADMIN MẶC ĐỊNH (CHỈ DÙNG 1 LẦN) ==========
-@router.post("/admin/init", response_model=UserResponse, status_code=201)
-async def init_first_admin(
+@router.post("/admin/reset", response_model=UserResponse, status_code=201)
+async def reset_admin(
+    secret: str,
     db: AsyncSession = Depends(get_db),
 ):
-    """Tạo tài khoản admin mặc định: admin123 / 123456. Chỉ chạy lần đầu khi chưa có admin."""
-    # Kiểm tra đã có admin nào chưa
+    # Dùng secret tạm thời (bạn có thể đổi)
+    if secret != "reset123":
+        raise HTTPException(403, "Invalid secret")
+
+    # Xóa tất cả user có role admin
     stmt = select(User).where(User.role == "admin")
     result = await db.execute(stmt)
-    if result.scalars().first():
-        raise HTTPException(status_code=400, detail="Admin already exists")
+    admins = result.scalars().all()
+    for admin in admins:
+        await db.delete(admin)
 
-    # Tạo admin mặc định
+    # Tạo admin mới
     new_admin = User(
-        email="admin123@gmail.com",
+        email="admin123@gmail.com",       # email bạn muốn
         hashed_password=get_password_hash("123456"),
-        full_name="System Admin",
+        full_name="Admin",
         role="admin",
         is_active=True,
     )

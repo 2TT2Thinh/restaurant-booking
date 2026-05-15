@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.auth import TokenSchema, UserCreate, UserResponse
 from app.services.auth_service import authenticate_user, create_user
-from app.core.security import create_access_token
+from app.core.security import create_access_token, get_password_hash
 from app.api.deps import get_db
 from backend.app.models.user import User
 
@@ -54,24 +54,19 @@ async def register(
 
 # app/api/v1/endpoints/auth.py
 
+# ========== TẠO ADMIN MẶC ĐỊNH (CHỈ DÙNG 1 LẦN) ==========
 @router.post("/admin/init", response_model=UserResponse, status_code=201)
 async def init_first_admin(
     db: AsyncSession = Depends(get_db),
 ):
-    """Tạo admin mặc định admin123 / 123456. Chỉ dùng 1 lần."""
-    # Kiểm tra đã có admin chưa
+    """Tạo tài khoản admin mặc định: admin123 / 123456. Chỉ chạy lần đầu khi chưa có admin."""
+    # Kiểm tra đã có admin nào chưa
     stmt = select(User).where(User.role == "admin")
     result = await db.execute(stmt)
     if result.scalars().first():
-        raise HTTPException(400, "Admin already exists")
-    
-    # Kiểm tra email admin123 chưa tồn tại
-    stmt = select(User).where(User.email == "admin123")
-    existing = await db.execute(stmt)
-    if existing.scalars().first():
-        raise HTTPException(400, "User admin123 already exists")
-    
-    from app.core.security import get_password_hash
+        raise HTTPException(status_code=400, detail="Admin already exists")
+
+    # Tạo admin mặc định
     new_admin = User(
         email="admin123",
         hashed_password=get_password_hash("123456"),

@@ -1,6 +1,5 @@
 <template>
   <v-card rounded="xl" elevation="0" border class="d-flex flex-column chatbot-card">
-
     <!-- Header -->
     <v-card-title class="d-flex align-center gap-2 pa-4 border-b">
       <v-avatar color="primary" size="32" rounded="lg">
@@ -23,7 +22,7 @@
       <div
         v-for="(msg, i) in messages"
         :key="i"
-        class="d-flex mb-3"
+        class="d-flex mb-3 message-row"
         :class="msg.role === 'user' ? 'justify-end' : 'justify-start'"
       >
         <!-- Bot avatar -->
@@ -49,7 +48,7 @@
       </div>
 
       <!-- Typing indicator -->
-      <div v-if="loading" class="d-flex align-center gap-2 mb-3">
+      <div v-if="loading" class="d-flex align-center gap-2 mb-3 typing-container">
         <v-avatar color="primary" size="28" rounded="lg">
           <v-icon color="white" size="16">mdi-robot-outline</v-icon>
         </v-avatar>
@@ -150,14 +149,43 @@ const sendMessage = async () => {
 <style scoped>
 .chatbot-card {
   height: 520px;
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
+
+.chatbot-card:hover {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
 }
 
 .message-list {
   min-height: 0;
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+}
+
+/* Animation cho từng message row */
+.message-row {
+  animation: slideInUp 0.35s cubic-bezier(0.2, 0.9, 0.4, 1.1) forwards;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .message-bubble {
   line-height: 1.5;
+  transition: all 0.25s ease;
+}
+
+.message-bubble:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .bubble-user {
@@ -192,5 +220,93 @@ const sendMessage = async () => {
 @keyframes bounce {
   0%, 80%, 100% { transform: scale(0.7); opacity: 0.5; }
   40%           { transform: scale(1);   opacity: 1; }
+}
+
+/* Animation cho typing indicator */
+.typing-container {
+  animation: pulseGlow 1.5s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Animation cho empty state */
+.h-100 {
+  animation: fadeInScale 0.5s ease-out;
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Hiệu ứng focus cho input */
+:deep(.v-field) {
+  transition: all 0.25s ease;
+}
+
+:deep(.v-field--focused) {
+  transform: scale(1.01);
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+}
+
+/* Hiệu ứng hover cho button gửi */
+.v-btn {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.v-btn:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.05);
+}
+
+.v-btn:active:not(:disabled) {
+  transform: translateY(1px) scale(0.98);
+}
+
+/* Scrollbar đẹp hơn */
+.message-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.message-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.message-list::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #c1c1c1, #a8a8a8);
+  border-radius: 10px;
+  transition: background 0.3s ease;
+}
+
+.message-list::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #a8a8a8, #909090);
+}
+
+/* Hiệu ứng ripple cho message mới */
+@keyframes ripple {
+  0% {
+    box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 0 8px rgba(25, 118, 210, 0);
+  }
+}
+
+/* Áp dụng ripple cho message cuối cùng của bot */
+.message-row:last-child .bubble-bot {
+  animation: ripple 0.6s ease-out;
 }
 </style>

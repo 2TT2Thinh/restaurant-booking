@@ -8,7 +8,7 @@ from app.schemas.auth import TokenSchema, UserCreate, UserResponse
 from app.services.auth_service import authenticate_user, create_user
 from app.core.security import create_access_token, get_password_hash
 from app.api.deps import get_db
-from backend.app.models.user import User
+from app.models.user import User          
 
 router = APIRouter()
 

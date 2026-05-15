@@ -68,7 +68,7 @@ async def init_first_admin(
 
     # Tạo admin mặc định
     new_admin = User(
-        email="admin123",
+        email="admin123@gmail",
         hashed_password=get_password_hash("123456"),
         full_name="System Admin",
         role="admin",

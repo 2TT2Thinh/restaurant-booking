@@ -1,12 +1,14 @@
 # app/api/v1/endpoints/auth.py
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.auth import TokenSchema, UserCreate, UserResponse
 from app.services.auth_service import authenticate_user, create_user
 from app.core.security import create_access_token
 from app.api.deps import get_db
+from backend.app.models.user import User
 
 router = APIRouter()
 
@@ -47,3 +49,37 @@ async def register(
     create_user raises HTTPException(400) if email already exists.
     """
     return await create_user(db, user_in)
+
+# app/api/v1/endpoints/auth.py (bổ sung)
+
+# app/api/v1/endpoints/auth.py
+
+@router.post("/admin/init", response_model=UserResponse, status_code=201)
+async def init_first_admin(
+    db: AsyncSession = Depends(get_db),
+):
+    """Tạo admin mặc định admin123 / 123456. Chỉ dùng 1 lần."""
+    # Kiểm tra đã có admin chưa
+    stmt = select(User).where(User.role == "admin")
+    result = await db.execute(stmt)
+    if result.scalars().first():
+        raise HTTPException(400, "Admin already exists")
+    
+    # Kiểm tra email admin123 chưa tồn tại
+    stmt = select(User).where(User.email == "admin123")
+    existing = await db.execute(stmt)
+    if existing.scalars().first():
+        raise HTTPException(400, "User admin123 already exists")
+    
+    from app.core.security import get_password_hash
+    new_admin = User(
+        email="admin123",
+        hashed_password=get_password_hash("123456"),
+        full_name="System Admin",
+        role="admin",
+        is_active=True,
+    )
+    db.add(new_admin)
+    await db.commit()
+    await db.refresh(new_admin)
+    return new_admin

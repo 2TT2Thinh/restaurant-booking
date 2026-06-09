@@ -72,8 +72,8 @@ async def reset_admin(
 
     # Tạo admin mới
     new_admin = User(
-        email="admin123@gmail.com",       # email bạn muốn
-        hashed_password=get_password_hash("123456"),
+        email="admin01@test.com",       # email bạn muốn
+        hashed_password=get_password_hash("Admin@1234"),
         full_name="Admin",
         role="admin",
         is_active=True,
